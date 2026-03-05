@@ -1,0 +1,631 @@
+---
+title: "Teacher Features"
+description: "Comprehensive guide to teacher commands for accessing student data, broadcasting messages, and managing system lists"
+---
+
+## Overview
+
+Teachers have access to advanced commands for retrieving student information, broadcasting messages to entire courses, and managing system access lists. These features streamline administrative tasks and improve communication with students.
+
+<Warning>
+  **Teacher Access Only**
+  
+  These commands are designed for authorized teachers. Some features may be restricted based on your access level.
+</Warning>
+
+## Getting Started
+
+### Access Teacher Commands
+
+To see the teacher instruction menu, use the `/docente` command:
+
+```text
+/docente
+```
+
+The bot will respond with comprehensive instructions for all available teacher commands: `app.js:177-181`
+
+<Info>
+  The bot sends instructions in two parts, with the second message arriving after 18 seconds to ensure you have time to read the first part.
+</Info>
+
+## Core Teacher Commands
+
+### 1. Get Student Information
+
+Retrieve detailed information about a specific student using their RUT.
+
+<Steps>
+  <Step title="Use the /datos command">
+    Format: `/datos [RUT]`
+    
+    ```text
+    /datos 123456781
+    ```
+    
+    The RUT should be:
+    - Without dots or hyphens
+    - K replaced with 1
+    - Foreign students: Do NOT include '100' prefix
+    
+    Source: `app.js:182-187`
+  </Step>
+  
+  <Step title="Wait for response">
+    The bot retrieves information from the database: `app.js:186`
+    
+    Processing time: ~5 seconds `APIservicios.js:156`
+  </Step>
+  
+  <Step title="Review student data">
+    You'll receive information including:
+    - Student name
+    - Course
+    - Contact information
+    - Guardian information
+    - Email address
+    
+    Source: `APIservicios.js:126-179`
+  </Step>
+</Steps>
+
+<Warning>
+  **Common Error**
+  
+  If you send `/datos` without a RUT, you'll receive an error message:
+  
+  "no me mandaste los datos despues del comando /datos"
+  
+  Always include the RUT after the command: `app.js:183-185`
+</Warning>
+
+### 2. Broadcast Messages to a Course
+
+Send a message to all students in a specific course via WhatsApp.
+
+<Steps>
+  <Step title="Use the /wsp command">
+    Format: `/wsp [CURSO][MENSAJE]`
+    
+    Course format: `[Number][Letter][School Code]`
+    
+    **Examples:**
+    ```text
+    /wsp 2AC25 Recordatorio: Prueba de matemáticas mañana
+    ```
+    
+    ```text
+    /wsp 3BC25 Reunión de apoderados el viernes a las 18:00
+    ```
+    
+    Source: `app.js:241-254`
+  </Step>
+  
+  <Step title="Course code validation">
+    The bot validates the course format:
+    
+    **Valid course numbers:** 1, 2, 3, 4 `APIservicios.js:5`
+    
+    **Valid letters:** A, B, C, D, E, F `APIservicios.js:6`
+    
+    **Valid school codes:** C25, B26 `APIservicios.js:7`
+    
+    Course code must be exactly 5 characters: `APIservicios.js:197`
+  </Step>
+  
+  <Step title="Message distribution">
+    The bot:
+    1. Retrieves all student phone numbers for the course
+    2. Verifies each number is registered on WhatsApp
+    3. Sends the message with a 16-second delay between each student (to avoid rate limiting)
+    4. Personalizes each message with student's name
+    
+    Source: `APIservicios.js:229-259`
+  </Step>
+  
+  <Step title="Confirmation">
+    After 15 seconds (Telegram) or 25 seconds (WhatsApp), you'll receive a confirmation:
+    
+    "He enviado el mensaje con lo que doy por finalizada su solicitud"
+    
+    Source: `app.js:247-253`
+  </Step>
+</Steps>
+
+#### Course Format Examples
+
+<CodeGroup>
+```text 2nd Grade, Parallel A, School C25
+/wsp 2AC25 Mensaje aquí
+```
+
+```text 3rd Grade, Parallel B, School C25
+/wsp 3BC25 Mensaje aquí
+```
+
+```text 1st Grade, Parallel D, School B26
+/wsp 1DB26 Mensaje aquí
+```
+
+```text 4th Grade, Parallel F, School C25
+/wsp 4FC25 Mensaje aquí
+```
+</CodeGroup>
+
+<Accordion title="Message Format Details">
+  The message sent to each student is formatted as:
+  
+  ```
+  [Student Name], te recuerdo algo importante: [Your Message]
+  
+  Por favor NO RESPONDAS ESTE MENSAJE
+  ```
+  
+  This ensures students understand:
+  - The message is personalized to them
+  - They should not reply (as it's an automated broadcast)
+  
+  Source: `APIservicios.js:231`
+</Accordion>
+
+<Warning>
+  **Course Code Errors**
+  
+  If the course format is incorrect, you'll receive:
+  
+  "curso mal escrito, verifique que esta correcto, curso+letra+C25, ejemplo 2FC25"
+  
+  Common mistakes:
+  - Wrong length (must be exactly 5 characters)
+  - Invalid course number
+  - Invalid parallel letter
+  - Wrong school code
+  - Missing or extra spaces
+  
+  Source: `APIservicios.js:197-207`
+</Warning>
+
+### 3. Search by Guardian Name (Suspended)
+
+The `/sapoderado` command for searching student data by guardian name is currently suspended due to external API service issues.
+
+```text Suspended Command
+/sapoderado [Guardian Name]
+```
+
+This feature may be restored in the future: `app.js:224-231` (commented out)
+
+## Admin-Only Commands
+
+Administrators have access to special commands for managing user lists. These commands only work when sent from the admin WhatsApp number configured in the environment variables.
+
+<Note>
+  Admin number is configured via the `numeroAdmin` environment variable: `app.js:48`
+  
+  All admin commands are only available on WhatsApp: `app.js:298`
+</Note>
+
+### Blacklist Management
+
+The blacklist prevents specific users from interacting with the bot.
+
+<CardGroup cols={2}>
+  <Card title="Add to Blacklist" icon="ban">
+    **Command:** `/addlistanegra [number] [identifier]`
+    
+    ```text
+    /addlistanegra 598XXXXXXXX Pepe Perez
+    ```
+    
+    - Number should be without @c.us suffix
+    - Identifier helps you remember who the user is
+    
+    Source: `app.js:306-314`
+  </Card>
+  
+  <Card title="Remove from Blacklist" icon="circle-check">
+    **Command:** `/removelistanegra [number]`
+    
+    ```text
+    /removelistanegra 598XXXXXXXX
+    ```
+    
+    Removes the specified number from blacklist
+    
+    Source: `app.js:315-323`
+  </Card>
+  
+  <Card title="List Blacklist" icon="list">
+    **Command:** `/listalistanegra`
+    
+    ```text
+    /listalistanegra
+    ```
+    
+    Shows all blacklisted numbers and their identifiers
+    
+    Source: `app.js:324-327`
+  </Card>
+  
+  <Card title="How Blacklist Works" icon="shield-halved">
+    When a message is received, the bot checks if the sender's number is in the blacklist.
+    
+    If blacklisted, the bot immediately returns without any response.
+    
+    Source: `app.js:293-295`
+  </Card>
+</CardGroup>
+
+### SimSimi List Management
+
+The SimSimi list controls which WhatsApp users can access AI conversational features.
+
+<CardGroup cols={2}>
+  <Card title="Add to SimSimi List" icon="comments">
+    **Command:** `/addsimsimi [number] [identifier]`
+    
+    ```text
+    /addsimsimi 569XXXXXXXX Amigo1
+    ```
+    
+    Grants AI conversation access to this user
+    
+    Source: `app.js:328-336`
+  </Card>
+  
+  <Card title="Remove from SimSimi List" icon="comment-slash">
+    **Command:** `/removesimsimi [number]`
+    
+    ```text
+    /removesimsimi 569XXXXXXXX
+    ```
+    
+    Revokes AI conversation access
+    
+    Source: `app.js:337-345`
+  </Card>
+  
+  <Card title="List SimSimi Users" icon="list-check">
+    **Command:** `/listsimsimi`
+    
+    ```text
+    /listsimsimi
+    ```
+    
+    Shows all users with AI conversation access
+    
+    Source: `app.js:346-349`
+  </Card>
+  
+  <Card title="Why SimSimi List Exists" icon="circle-info">
+    On WhatsApp, AI features are restricted to prevent abuse and manage API costs.
+    
+    Only users in the SimSimi list receive AI responses. Others get a generic message.
+    
+    Source: `app.js:463-474`
+  </Card>
+</CardGroup>
+
+<Info>
+  **Persistent Storage**
+  
+  Both blacklist and SimSimi list are stored in `userLists.json` and persist across bot restarts: `app.js:11-33`
+</Info>
+
+## Understanding Response Times
+
+<AccordionGroup>
+  <Accordion title="Student Data Retrieval">
+    **Processing time:** ~5 seconds
+    
+    The bot:
+    1. Sends acknowledgment message immediately
+    2. Queries Google Sheets API
+    3. Waits for response
+    4. Sends formatted data after 5 seconds
+    
+    Source: `APIservicios.js:150-156`
+  </Accordion>
+  
+  <Accordion title="Course Message Broadcasting">
+    **Total time:** Variable, depends on class size
+    
+    Calculation: `(Number of students × 16 seconds) + 25 seconds`
+    
+    For a 30-student class: ~8 minutes
+    
+    The 16-second delay per message prevents WhatsApp rate limiting: `APIservicios.js:241`
+  </Accordion>
+  
+  <Accordion title="Admin Command Responses">
+    **Processing time:** Immediate
+    
+    Admin commands update the in-memory lists and save to file synchronously, providing instant confirmation.
+    
+    Source: `app.js:26-33`
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+<Accordion title="Student Not Found Error">
+  **Message:** "Estudiante no existe, verifique los datos y reintente"
+  
+  **Causes:**
+  - RUT not in database
+  - Incorrect RUT format
+  - Student withdrawn from system
+  
+  **Solution:** Verify the RUT is correct. If problem persists, check with administration.
+  
+  Source: `APIservicios.js:157-168`
+</Accordion>
+
+<Accordion title="Course Not Found Error">
+  **Message:** "Curso no existe, verifique los datos y reintente"
+  
+  **Causes:**
+  - Invalid course code format
+  - Course not in database
+  - Typo in school code
+  
+  **Solution:** Double-check the course code format matches exactly: NumberLetterSchoolCode
+  
+  Source: `APIservicios.js:268-278`
+</Accordion>
+
+<Accordion title="Invalid WhatsApp Number">
+  **Message:** "el numero [number] del alumno [name] es invalido para wsp o el alumno esta retirado"
+  
+  **Causes:**
+  - Phone number not registered on WhatsApp
+  - Student withdrew from school
+  - Incorrect phone number in database
+  
+  **Action:** The bot skips this student and continues with others. You'll be notified of each invalid number.
+  
+  Source: `APIservicios.js:243-247`
+</Accordion>
+
+<Accordion title="Admin Command Format Errors">
+  **Adding to lists:**
+  - Missing number: "Comando inválido, el número ya existe o falta el identificador"
+  - Already exists: Same error message
+  - Solution: Use format `/addlistanegra 569XXXXXXXX Identifier Name`
+  
+  **Removing from lists:**
+  - Invalid number: "Número inválido o no encontrado en la lista"
+  - Solution: Verify the number exists using the list command first
+  
+  Source: `app.js:310-322`, `app.js:332-344`
+</Accordion>
+
+## Best Practices
+
+<Card title="Efficient Student Data Queries" icon="magnifying-glass">
+  **When you don't know the RUT:**
+  
+  The `/sapoderado` command is currently suspended, but you can:
+  1. Check physical student records
+  2. Ask the student directly
+  3. Search your course roster
+  4. Use school administration database
+  
+  The bot needs exact RUTs to function: `app.js:73`
+</Card>
+
+<Card title="Broadcasting Best Practices" icon="bullhorn">
+  **Before sending a broadcast:**
+  
+  1. Double-check the course code
+  2. Review your message for typos
+  3. Keep messages concise (students read on mobile)
+  4. Include key information: date, time, location
+  5. Avoid broadcasts during late night hours
+  6. Remember students can't reply directly
+  
+  **Timing considerations:**
+  - Large classes take time (16 seconds per student)
+  - Wait for confirmation before sending another broadcast
+  - Don't send multiple broadcasts to the same course rapidly
+</Card>
+
+<Card title="Managing Access Lists" icon="users-gear">
+  **Blacklist usage:**
+  - Use for users who abuse the system
+  - Use for spam prevention
+  - Always include an identifier for future reference
+  - Periodically review and clean the list
+  
+  **SimSimi list usage:**
+  - Grant access to trusted users only
+  - Monitor for potential abuse
+  - Remove users if AI conversation is misused
+  - Consider API costs when adding users
+  
+  Lists persist across restarts: `app.js:26-33`
+</Card>
+
+## Technical Details
+
+<AccordionGroup>
+  <Accordion title="How Student Data is Retrieved">
+    The `/datos` command workflow:
+    
+    1. Extract RUT from command: `app.js:133`
+    2. Clean RUT format (remove dots, hyphens): `APIservicios.js:134`
+    3. Build API URL with RUT: `APIservicios.js:135`
+    4. Fetch from Google Sheets API: `APIservicios.js:135-178`
+    5. Parse and format response
+    6. Send to teacher
+    
+    The API URL structure:
+    ```javascript
+    const urlApiDatosEstudiante = 
+      "https://script.google.com/macros/s/"+
+      codigoImplementacion+
+      "/exec?sdata=datosEstudiante,"
+    ```
+    
+    Source: `APIservicios.js:13-14`
+  </Accordion>
+  
+  <Accordion title="How Message Broadcasting Works">
+    The `/wsp` command workflow:
+    
+    1. Parse course code and message: `APIservicios.js:188-194`
+    2. Validate course format: `APIservicios.js:196-207`
+    3. Fetch all students in course: `APIservicios.js:210-219`
+    4. Split response into individual student records: `APIservicios.js:227-229`
+    5. For each student:
+       - Format phone number (+56XXXXXXXXX → 56XXXXXXXXX@c.us)
+       - Check if registered on WhatsApp: `APIservicios.js:235-236`
+       - If valid, send personalized message after 16-second delay
+       - If invalid, notify admin
+    6. Send confirmation to teacher
+    
+    The 16-second delay prevents rate limiting: `APIservicios.js:241`
+  </Accordion>
+  
+  <Accordion title="List Management Implementation">
+    Both blacklist and SimSimi list:
+    
+    1. Load from JSON file on startup: `app.js:13-24`
+    2. Store in memory as arrays during runtime: `app.js:9-10`
+    3. Save to file after any modification: `app.js:26-33`
+    
+    File location: `./userLists.json`
+    
+    Structure:
+    ```json
+    {
+      "listaNegra": [
+        {"numero": "598XXXXXXXX@c.us", "identificador": "Pepe Perez"}
+      ],
+      "listaSimsimi": [
+        {"numero": "569XXXXXXXX@c.us", "identificador": "Amigo1"}
+      ]
+    }
+    ```
+    
+    The file is created automatically if it doesn't exist: `app.js:20`
+  </Accordion>
+  
+  <Accordion title="Telegram vs WhatsApp Differences">
+    **Command availability:**
+    
+    | Command | Telegram | WhatsApp |
+    |---------|----------|----------|
+    | `/docente` | ✅ | ✅ |
+    | `/datos` | ✅ | ✅ |
+    | `/wsp` | ✅ | ✅ |
+    | Admin commands | ❌ | ✅ |
+    
+    Admin commands are WhatsApp-only because:
+    - Number validation is straightforward on WhatsApp
+    - BlackList/SimSimi lists are WhatsApp-specific features
+    - Telegram doesn't have the same abuse issues
+    
+    **Code locations:**
+    - Telegram handlers: `app.js:142-280`
+    - WhatsApp handlers: `app.js:283-499`
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<Steps>
+  <Step title="Command not responding">
+    **Possible causes:**
+    - Typo in command (missing `/` or wrong spelling)
+    - Bot temporarily offline
+    - Network connectivity issue
+    
+    **Solutions:**
+    - Verify command format exactly matches documentation
+    - Wait 30 seconds and try again
+    - Check if bot is online (send "opciones")
+  </Step>
+  
+  <Step title="Student data returns 'not found'">
+    **Possible causes:**
+    - RUT formatted incorrectly
+    - Student not in database
+    - Student recently enrolled (not yet added)
+    
+    **Solutions:**
+    - Remove all dots, hyphens from RUT
+    - Replace K with 1
+    - Verify student enrollment status
+    - Contact system administrator
+  </Step>
+  
+  <Step title="Broadcast partially fails">
+    **Possible causes:**
+    - Some students have invalid phone numbers
+    - Some students don't have WhatsApp
+    - Phone numbers in database are outdated
+    
+    **Solutions:**
+    - Review error messages for specific students
+    - Update phone numbers in database
+    - Contact students who didn't receive message
+    - The bot continues with valid numbers automatically
+  </Step>
+  
+  <Step title="Admin commands don't work">
+    **Possible causes:**
+    - Not using admin WhatsApp number
+    - Using Telegram (admin commands are WhatsApp-only)
+    - Incorrect command format
+    
+    **Solutions:**
+    - Verify you're sending from the configured admin number
+    - Switch to WhatsApp if using Telegram
+    - Check command format matches examples
+  </Step>
+</Steps>
+
+## Support and Contact
+
+For technical issues or questions about teacher features:
+
+<CardGroup cols={2}>
+  <Card title="Email Support" icon="envelope">
+    dcornejo@liceotecnicotalcahuano.cl
+    
+    Include:
+    - Your name
+    - The command you're trying to use
+    - Error message received
+    - Student/course information (if applicable)
+  </Card>
+  
+  <Card title="System Administrator" icon="user-gear">
+    Contact the admin for:
+    - Admin access requests
+    - Database updates
+    - Adding new courses
+    - Technical configuration
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Student Features" icon="graduation-cap" href="/features/student-features">
+    Learn what features are available to students
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore the API documentation
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration/environment-variables">
+    Set up environment variables
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/advanced/troubleshooting">
+    Solutions to common problems
+  </Card>
+</CardGroup>

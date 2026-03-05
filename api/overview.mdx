@@ -1,0 +1,184 @@
+---
+title: 'API Overview'
+description: 'Architecture and integration with Google Apps Script for the Pregúntale al Profe bot'
+icon: 'code'
+---
+
+## Architecture
+
+The Pregúntale al Profe bot integrates with Google Apps Script to manage student data, grades, and course information. All API operations communicate with a Google Sheets backend through deployed web apps.
+
+## Google Apps Script Integration
+
+The system uses Google Apps Script as a backend API layer, deployed as web apps that accept HTTP requests. All API endpoints follow this pattern:
+
+```javascript
+const codigoImplementacion = process.env.implementacionApiGoogle
+const baseUrl = `https://script.google.com/macros/s/${codigoImplementacion}/exec`
+```
+
+### API Endpoints
+
+The system exposes several endpoints through query parameters:
+
+<CardGroup cols={2}>
+  <Card title="Student Grades" icon="graduation-cap">
+    `?sdata=[RUT]` - Retrieves student grade report
+  </Card>
+  <Card title="Student Data" icon="user">
+    `?sdata=datosEstudiante,[RUT]` - Fetches student information
+  </Card>
+  <Card title="Course Data" icon="users">
+    `?sdata=datosEstudiantesCurso,[CURSO]` - Gets all students in a course
+  </Card>
+  <Card title="Update Email" icon="envelope">
+    `?sdata=[RUT],[EMAIL]` - Updates student email address
+  </Card>
+</CardGroup>
+
+## Request/Response Flow
+
+### Standard Flow
+
+1. **Initial Request**: Bot sends HTTP request to Google Apps Script endpoint
+2. **Redirect**: Apps Script returns a redirect URL
+3. **Fetch Content**: Bot fetches content from redirect URL
+4. **Process Response**: Content is processed and sent to user
+
+```javascript
+fetch(apiUrl + parameter)
+  .then((response) => {
+    return response;
+  })
+  .then((redirectUrl) => {
+    fetch(redirectUrl.url)
+      .then((content) => {
+        return content.text();
+      })
+      .then((data) => {
+        // Process data
+      })
+  })
+```
+
+### Response Format
+
+**Success Responses:**
+- HTML file (for grade reports)
+- Text data (for student/course information)
+- Confirmation messages (for updates)
+
+**Error Responses:**
+- `"Estudiante no existe, reintente"` - Student not found
+- `"Curso no existe, reintente"` - Course not found
+
+## Authentication
+
+Admin operations require verification against the admin number:
+
+```javascript
+const numeroAdmin = process.env.numeroAdmin;
+
+// Admin-only operations check
+if (numeroUsuarioWhatsapp === numeroAdmin) {
+  // Execute admin command
+}
+```
+
+<Warning>
+  Admin commands (student data queries, course messaging) are restricted to the configured admin phone number only.
+</Warning>
+
+## Error Handling
+
+All API functions implement comprehensive error handling:
+
+### Common Error Patterns
+
+**Network Errors:**
+```javascript
+.catch((error) => {
+  console.log("Error en la api porque: " + error);
+  cliente.sendMessage(numeroAdmin, `Error message: ${error}`);
+})
+```
+
+**Validation Errors:**
+- RUT validation using `rut.js` library
+- Email validation using `email-validator`
+- Course format validation (format: `[1-4][A-F]C25`)
+
+**User Notification:**
+```javascript
+try {
+  ctx.reply(errorMessage); // Telegram
+} catch (error) {
+  cliente.sendMessage(numeroUsuarioWhatsapp, errorMessage); // WhatsApp
+}
+```
+
+## Exported Functions
+
+The API module exports the following functions:
+
+```javascript
+module.exports = {
+  cambioEmail,
+  envioNotas,
+  datosEstudiante,
+  datosEstudianteCurso,
+  inscripcionAlSistema,
+  simSimi
+}
+```
+
+## Data Validation
+
+### RUT Processing
+
+All RUT inputs are normalized before API calls:
+
+```javascript
+let RUT_normalized = rut
+  .replace(/[\.,\-]/g, "")      // Remove dots, commas, hyphens
+  .replace(/[K-k]/g, '1')        // Replace K/k with 1
+  .replace(/\s+/g, '')           // Remove whitespace
+  .replace(/^100/, '');          // Remove foreign RUT prefix
+```
+
+### Course Code Validation
+
+```javascript
+const cursosPosibles = ['1','2','3','4']          // Valid grades
+const paralelosPosibles = ['A','B','C','D','E','F'] // Valid sections
+const codigoLiceoPosibles = ['C25','B26']         // Valid school codes
+```
+
+Course format: `[grade][section][school_code]` (e.g., `2AC25`)
+
+## Dual Platform Support
+
+All functions support both Telegram and WhatsApp:
+
+```javascript
+try {
+  ctx.reply(message);  // Telegram (uses ctx)
+} catch (error) {
+  cliente.sendMessage(numeroUsuarioWhatsapp, message); // WhatsApp
+}
+```
+
+<Note>
+  The `ctx` parameter is only available for Telegram messages. WhatsApp uses the `cliente` object with `numeroUsuarioWhatsapp`.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Student Operations" icon="user-graduate" href="/api/student-operations">
+    Learn about grade reports, email changes, and enrollment
+  </Card>
+  <Card title="Teacher Operations" icon="chalkboard-user" href="/api/teacher-operations">
+    Explore admin functions for student data and course messaging
+  </Card>
+</CardGroup>

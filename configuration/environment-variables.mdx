@@ -1,0 +1,191 @@
+---
+title: Environment Variables
+description: Configure your Pregúntale al Profe bot with the required environment variables for Telegram, WhatsApp, and Google Apps Script integration.
+---
+
+## Overview
+
+The bot requires three essential environment variables to function properly. These are loaded using the `dotenv` package and must be defined in a `.env` file at the root of your project.
+
+<Warning>
+  Never commit your `.env` file to version control. Keep your credentials secret and secure.
+</Warning>
+
+## Required Variables
+
+### Telegram Configuration
+
+<ParamField path="BOT_TOKEN" type="string" required>
+  The authentication token for your Telegram bot, obtained from BotFather.
+  
+  **Format:** A long alphanumeric string in the format `1064387076:AAHJUmOM7g7iwDKynkAeWKKYbLrTPKKBxxx`
+  
+  **How to obtain:**
+  1. Open Telegram and search for [@BotFather](https://t.me/botfather)
+  2. Send the command `/newbot` to create a new bot
+  3. Follow the prompts to set up your bot name and username
+  4. BotFather will provide your unique bot token
+  
+  **Usage in code:** Loaded via `config.js` and used to initialize the Telegraf bot instance.
+  
+  ```javascript
+  // config.js
+  const tokenProfeDaniel = process.env.BOT_TOKEN;
+  ```
+</ParamField>
+
+### WhatsApp Configuration
+
+<ParamField path="numeroAdmin" type="string" required>
+  The WhatsApp phone number of the system administrator in international format.
+  
+  **Format:** `569xxxxxxxx` (without the `+` symbol, but with country code)
+  
+  **Example:** `56912345678` for a Chilean number
+  
+  **Purpose:**
+  - Receives error notifications and system alerts
+  - Has access to admin commands for user list management
+  - Receives reports from course message broadcasts
+  
+  **Usage in code:** Used to identify admin privileges and route notifications.
+  
+  ```javascript
+  // app.js
+  const numeroAdmin = process.env.numeroAdmin;
+  
+  // Admin command check
+  if (numeroUsuarioWhatsapp === process.env.numeroAdmin && cuerpoMensajeWhatsapp.startsWith('/')) {
+    // Admin commands
+  }
+  ```
+</ParamField>
+
+### Google Apps Script Configuration
+
+<ParamField path="implementacionApiGoogle" type="string" required>
+  The deployment code from your Google Apps Script that serves as the backend database.
+  
+  **Format:** A long alphanumeric deployment ID
+  
+  **Example:** `AKfycbwXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`
+  
+  **Purpose:**
+  - Connects the bot to Google Sheets backend
+  - Enables student data retrieval
+  - Handles grade reports and email updates
+  - Manages student registration
+  
+  **How to obtain:**
+  1. Create a Google Apps Script project connected to your Google Sheet
+  2. Deploy the script as a web app
+  3. Copy the deployment ID from the URL
+  
+  **Usage in code:** Constructs API endpoint URLs for all backend operations.
+  
+  ```javascript
+  // APIservicios.js
+  const codigoImplementacion = process.env.implementacionApiGoogle;
+  
+  const urlApiNotas = "https://script.google.com/macros/s/" + codigoImplementacion + "/exec?sdata=";
+  const urlApiDatosEstudiante = "https://script.google.com/macros/s/" + codigoImplementacion + "/exec?sdata=datosEstudiante,";
+  ```
+</ParamField>
+
+## Example .env File
+
+Create a `.env` file in the root directory of your project with the following structure:
+
+```env
+# Token de tu bot de Telegram
+BOT_TOKEN=TU_TELEGRAM_BOT_TOKEN
+
+# Número de WhatsApp del administrador para recibir notificaciones (formato internacional)
+numeroAdmin=569xxxxxxxx
+
+# Código de implementación de tu API de Google Apps Script
+implementacionApiGoogle=TU_CODIGO_DE_IMPLEMENTACION
+```
+
+<Note>
+  Replace `TU_TELEGRAM_BOT_TOKEN`, `569xxxxxxxx`, and `TU_CODIGO_DE_IMPLEMENTACION` with your actual values.
+</Note>
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Use .gitignore">
+    Ensure your `.env` file is listed in `.gitignore` to prevent accidental commits:
+    ```gitignore
+    .env
+    .env.local
+    .env.*.local
+    ```
+  </Step>
+  
+  <Step title="Create .env.example">
+    Provide a template file (`.env.example`) with placeholder values for other developers:
+    ```env
+    BOT_TOKEN=your_telegram_bot_token_here
+    numeroAdmin=569xxxxxxxx
+    implementacionApiGoogle=your_google_apps_script_deployment_id
+    ```
+  </Step>
+  
+  <Step title="Restrict Access">
+    Only share credentials with authorized team members through secure channels (never via email or public chat).
+  </Step>
+  
+  <Step title="Rotate Credentials">
+    If credentials are compromised:
+    - Generate a new Telegram bot token via BotFather
+    - Redeploy your Google Apps Script with a new deployment
+    - Update your `.env` file immediately
+  </Step>
+</Steps>
+
+## Validation
+
+The bot validates environment variables on startup. If any required variable is missing, the application will fail to start.
+
+### Common Errors
+
+<AccordionGroup>
+  <Accordion title="BOT_TOKEN is undefined">
+    **Cause:** The `BOT_TOKEN` variable is not set in your `.env` file.
+    
+    **Solution:** Add `BOT_TOKEN=your_token_here` to your `.env` file and restart the application.
+  </Accordion>
+  
+  <Accordion title="Cannot find module 'dotenv'">
+    **Cause:** The `dotenv` package is not installed.
+    
+    **Solution:** Run `npm install` to install all dependencies, including `dotenv`.
+  </Accordion>
+  
+  <Accordion title="Google Apps Script returns 404">
+    **Cause:** The `implementacionApiGoogle` deployment ID is incorrect or the script is not deployed.
+    
+    **Solution:** Verify your Google Apps Script deployment ID and ensure the script is deployed as a web app with proper permissions.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Bot Setup" icon="robot" href="/configuration/bot-setup">
+    Configure your Telegram and WhatsApp bots
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Learn about API integration
+  </Card>
+  
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with the bot
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/advanced/troubleshooting">
+    Common configuration issues
+  </Card>
+</CardGroup>

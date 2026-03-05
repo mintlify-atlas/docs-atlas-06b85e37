@@ -1,0 +1,273 @@
+---
+title: User Lists Management
+description: Manage blacklists and SimSimi whitelists with admin commands
+---
+
+The bot includes a user list management system that allows administrators to control access and AI interactions through two specialized lists: `listaNegra` (blacklist) and `listaSimsimi` (SimSimi whitelist).
+
+## Overview
+
+User lists are stored in `userLists.json` and loaded on bot startup. The system provides admin-only commands to manage these lists dynamically without restarting the bot.
+
+## File Structure
+
+The `userLists.json` file contains two arrays:
+
+```json
+{
+  "listaNegra": [
+    {
+      "numero": "59894101100@c.us",
+      "identificador": "zapiaAI"
+    }
+  ],
+  "listaSimsimi": [
+    {
+      "numero": "56990756008@c.us",
+      "identificador": "McLovin"
+    }
+  ]
+}
+```
+
+### Properties
+
+- **numero**: WhatsApp ID in format `[country_code][phone]@c.us`
+- **identificador**: Human-readable label for the user
+
+## listaNegra (Blacklist)
+
+The blacklist blocks users from interacting with the bot entirely. When a message is received, the bot checks:
+
+```javascript
+if (listaNegra.some(user => user.numero === numeroUsuarioWhatsapp)) {
+  return;
+}
+```
+
+Blacklisted users receive no response or acknowledgment.
+
+### Admin Commands
+
+#### /addlistanegra
+
+Add a user to the blacklist.
+
+**Syntax:**
+```
+/addlistanegra [phone_number] [identifier]
+```
+
+**Example:**
+```
+/addlistanegra 598... Pepe Perez
+```
+
+**Response:**
+- Success: `Se añadió [number] ([identifier]) a la lista negra.`
+- Error: `Comando inválido, el número ya existe o falta el identificador.`
+
+#### /removelistanegra
+
+Remove a user from the blacklist.
+
+**Syntax:**
+```
+/removelistanegra [phone_number]
+```
+
+**Example:**
+```
+/removelistanegra 598...
+```
+
+**Response:**
+- Success: `Se eliminó [number] de la lista negra.`
+- Error: `Número inválido o no encontrado en la lista negra.`
+
+#### /listalistanegra
+
+View all blacklisted users.
+
+**Syntax:**
+```
+/listalistanegra
+```
+
+**Response:**
+```
+Lista Negra:
+[identifier]: [numero]
+[identifier]: [numero]
+```
+
+If empty: `No hay números en la lista negra.`
+
+## listaSimsimi (SimSimi Whitelist)
+
+The SimSimi whitelist grants specific users access to AI-powered conversational responses via the SimSimi API. For non-whitelisted users (except admin), the bot returns a generic message.
+
+### Implementation
+
+```javascript
+if (listaSimsimi.some(user => user.numero === numeroUsuarioWhatsapp)) {
+  simSimi(cuerpoMensajeWhatsapp)
+    .then(async(resultadoRespuestaSimSimi) => {
+      await cliente.sendMessage(numeroUsuarioWhatsapp, resultadoRespuestaSimSimi)
+    })
+} else if (numeroUsuarioWhatsapp == process.env.numeroAdmin) {
+  cliente.sendMessage(numeroUsuarioWhatsapp, "usted es admin")
+} else {
+  cliente.sendMessage(numeroUsuarioWhatsapp, respuestaGenericaBot)
+}
+```
+
+Generic response:
+```
+Disculpa, soy solo un servicio de mensajeria virtual, ESTE NO ES EL NUMERO DEL PROFESOR, no puedo responder a tu mensaje, en caso de alguna inquietud puedes acercarte al profesor y expresarla personalmente
+```
+
+### Admin Commands
+
+#### /addsimsimi
+
+Add a user to the SimSimi whitelist.
+
+**Syntax:**
+```
+/addsimsimi [phone_number] [identifier]
+```
+
+**Example:**
+```
+/addsimsimi 569... Amigo1
+```
+
+**Response:**
+- Success: `Se añadió [number] ([identifier]) a la lista SimSimi.`
+- Error: `Comando inválido, el número ya existe o falta el identificador.`
+
+#### /removesimsimi
+
+Remove a user from the SimSimi whitelist.
+
+**Syntax:**
+```
+/removesimsimi [phone_number]
+```
+
+**Example:**
+```
+/removesimsimi 569...
+```
+
+**Response:**
+- Success: `Se eliminó [number] de la lista SimSimi.`
+- Error: `Número inválido o no encontrado en la lista SimSimi.`
+
+#### /listsimsimi
+
+View all whitelisted users.
+
+**Syntax:**
+```
+/listsimsimi
+```
+
+**Response:**
+```
+Lista SimSimi:
+[identifier]: [numero]
+[identifier]: [numero]
+```
+
+If empty: `No hay números en la lista SimSimi.`
+
+## Persistence
+
+Changes to lists are automatically saved to `userLists.json` using the `saveLists()` function:
+
+```javascript
+function saveLists() {
+  try {
+    const userLists = { listaNegra, listaSimsimi };
+    fs.writeFileSync(userListsPath, JSON.stringify(userLists, null, 2));
+  } catch (error) {
+    console.error('Error saving user lists:', error);
+  }
+}
+```
+
+Changes persist across bot restarts.
+
+## Security
+
+All list management commands are restricted to the admin user:
+
+```javascript
+if (numeroUsuarioWhatsapp === process.env.numeroAdmin && cuerpoMensajeWhatsapp.startsWith('/')) {
+  // Command processing
+}
+```
+
+### Admin Configuration
+
+The admin phone number is set via environment variable:
+```bash
+numeroAdmin=56912345678@c.us
+```
+
+Only this number can execute list management commands.
+
+## Initialization
+
+On startup (app.js:8-33), the bot:
+
+1. Checks if `userLists.json` exists
+2. Loads existing lists or creates empty arrays
+3. Creates the file with default structure if missing
+4. Logs any errors to console
+
+```javascript
+try {
+  if (fs.existsSync(userListsPath)) {
+    const data = fs.readFileSync(userListsPath, 'utf8');
+    const userLists = JSON.parse(data);
+    listaNegra = userLists.listaNegra || [];
+    listaSimsimi = userLists.listaSimsimi || [];
+  } else {
+    fs.writeFileSync(userListsPath, JSON.stringify({ listaNegra: [], listaSimsimi: [] }, null, 2));
+  }
+} catch (error) {
+  console.error('Error loading user lists:', error);
+}
+```
+
+## Use Cases
+
+### Blocking Spam Bots
+
+The blacklist is commonly used to block AI services and spam bots. Example entries from production:
+
+```json
+{
+  "numero": "18772241042@c.us",
+  "identificador": "CopilotAI"
+},
+{
+  "numero": "18002428478@c.us",
+  "identificador": "chatGptAI"
+}
+```
+
+### Enabling AI for Trusted Users
+
+The SimSimi whitelist allows select users to have natural conversations with the bot using AI responses, while others receive only the generic service message.
+
+## Best Practices
+
+1. **Use descriptive identifiers** - Makes list management easier
+2. **Verify phone numbers** - Format must be exact: `[number]@c.us`
+3. **Regular audits** - Use list commands to review current entries
+4. **Backup userLists.json** - Preserve list data before major changes
+5. **Test with non-admin accounts** - Verify commands are properly restricted

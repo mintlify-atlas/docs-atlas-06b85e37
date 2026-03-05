@@ -1,0 +1,433 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for the Pregúntale al Profe bot
+---
+
+This guide covers common issues encountered when running the bot and their solutions based on actual error handling in the source code.
+
+## WhatsApp Authentication
+
+<Accordion title="QR code not displaying">
+  **Problem:** The QR code doesn't appear when starting the bot.
+
+  **Console Message:**
+  ```
+  no habia sesion iniciada
+  se inicia sesion, por favor escanee el qr de arriba o visite http://localhost:[puerto]/qr
+  ```
+
+  **Solution:**
+  1. Check that the terminal supports QR code rendering
+  2. Verify `qrcode-terminal` package is installed
+  3. Try accessing the QR via the HTTP endpoint if provided
+  4. Ensure no previous `.wwebjs_auth` sessions are corrupted
+
+  **Code Reference:** app.js:119-127
+</Accordion>
+
+<Accordion title="Authentication failure">
+  **Problem:** WhatsApp session fails to authenticate.
+
+  **Console Message:**
+  ```
+  fallo el inicio de sesion en whatsapp porque: [error]
+  ```
+
+  **Solution:**
+  1. Delete the `.wwebjs_auth` folder
+  2. Restart the bot and scan a fresh QR code
+  3. Ensure WhatsApp is not logged in elsewhere
+  4. Verify Puppeteer dependencies are installed
+
+  **Code Reference:** app.js:131-133
+</Accordion>
+
+<Accordion title="Session initialization timeout">
+  **Problem:** Bot hangs during WhatsApp client initialization.
+
+  **Expected Message (when successful):**
+  ```
+  cliente whatsapp inicializado, ya se puede operar
+  ```
+
+  **Solution:**
+  1. Check internet connection
+  2. Increase timeout in Puppeteer configuration
+  3. Verify WhatsApp Web is not blocked by firewall
+  4. Try headless: false for debugging
+
+  **Code Reference:** app.js:115-118, app.js:128-130
+</Accordion>
+
+## Telegram Bot
+
+<Accordion title="Bot token invalid">
+  **Problem:** Telegram bot fails to connect.
+
+  **Console Message:**
+  ```
+  cliente telegram inicializado. ya se puede operar
+  ```
+  (This message will NOT appear if token is invalid)
+
+  **Solution:**
+  1. Verify `BOT_TOKEN` in config.js
+  2. Check environment variables are loaded
+  3. Get new token from @BotFather if necessary
+  4. Ensure `tokenTlgrm()` function returns valid token
+
+  **Code Reference:** app.js:47-57, app.js:135-136
+</Accordion>
+
+<Accordion title="Telegram commands not responding">
+  **Problem:** Bot receives messages but doesn't respond.
+
+  **Solution:**
+  1. Check bot has privacy mode disabled in @BotFather
+  2. Verify bot is added to group (if applicable)
+  3. Check for errors in console logs
+  4. Test with `/start` or `/help` commands
+
+  **Code Reference:** app.js:138-139
+</Accordion>
+
+## Google Apps Script API
+
+<Accordion title="Student not found error">
+  **Problem:** Bot reports student doesn't exist.
+
+  **User Message:**
+  ```
+  Estudiante no existe, verifique los datos y reintente. Si el problema persiste escriba a dcornejo@liceotecnicotalcahuano.cl indicando su rut, nombre y curso
+  ```
+
+  **Common Causes:**
+  1. RUT not in database
+  2. RUT format incorrect (includes dots or hyphens)
+  3. Foreign student RUT includes '100' prefix
+  4. Student data not synced from Google Sheets
+
+  **Solution:**
+  - Remove all dots and hyphens from RUT
+  - Replace 'K' or 'k' with '1'
+  - Foreign students: exclude '100' prefix
+  - Verify student exists in Google Sheets database
+
+  **Code Reference:** APIservicios.js:66-107, APIservicios.js:146-168
+</Accordion>
+
+<Accordion title="API timeout or connection error">
+  **Problem:** Requests to Google Apps Script fail.
+
+  **Admin Message:**
+  ```
+  error de direccion obtenida url porque: [error]
+  Peticion de Notas de [nombre]
+  ```
+
+  **Solution:**
+  1. Check `codigoImplementacion` environment variable
+  2. Verify Google Apps Script deployment is active
+  3. Check API URL format in APIservicios.js:9-16
+  4. Ensure script has proper permissions
+  5. Test API endpoint directly in browser
+
+  **Code Reference:** APIservicios.js:109-114, APIservicios.js:116-123
+</Accordion>
+
+<Accordion title="Course not found (broadcast messages)">
+  **Problem:** Teacher broadcast to course fails.
+
+  **User Message:**
+  ```
+  Curso no existe, verifique los datos y reintente. Si el problema persiste escriba a dcornejo@liceotecnicotalcahuano.cl indicando este problema
+  ```
+
+  **Common Causes:**
+  1. Course code format incorrect
+  2. Course not in database
+  3. Invalid school code (not C25 or B26)
+
+  **Solution:**
+  - Use format: `[number][letter][school_code]`
+  - Example: `2FC25` (2nd year, class F, school C25)
+  - Verify course exists in APIservicios.js:5-7
+
+  **Code Reference:** APIservicios.js:188-208, APIservicios.js:221-279
+</Accordion>
+
+## Data Validation
+
+<Accordion title="RUT validation fails">
+  **Problem:** Valid RUT is rejected during registration or queries.
+
+  **User Message:**
+  ```
+  Te equivocaste en los datos 😔, verifícalos.
+  Verifica si borraste por error alguna coma o algo de la plantilla que te di que no debías borrar y vuelve a enviármelos
+  Si tienes dudas pídele ayuda a tu profesor o escribe /online
+  ```
+
+  **Solution:**
+  1. Verify RUT is valid Chilean format
+  2. Check RUT in student enrollment template exactly:
+     ```
+     Estudiante,
+     Primer_Nombre: Alan,
+     2_Apellidos: Brito Delgado,
+     RUT: 12345678-5,
+     ...
+     ```
+  3. Use rut.js validation before submission
+
+  **Code Reference:** app.js:40-41, app.js:213-219, app.js:417-423
+</Accordion>
+
+<Accordion title="Email validation fails">
+  **Problem:** Email format is rejected.
+
+  **User Message:**
+  ```
+  [email] no es un email valido. Reintente según instrucciones
+  ```
+
+  **Solution:**
+  1. Ensure email follows format: `user@domain.com`
+  2. Remove all spaces from email
+  3. Use comma separator: `[rut],[email]`
+  4. Example: `123456781,nuevocorreo@gmail.com`
+
+  **Code Reference:** app.js:43, app.js:232-240, app.js:428-438
+</Accordion>
+
+<Accordion title="Phone number validation fails">
+  **Problem:** Registration rejected due to invalid phone numbers.
+
+  **User Message:**
+  ```
+  al parecer alguno de los números de teléfono esta incorrecto, verifícalo (no olvides el + antes del 56). si lo necesitas pídele ayuda a tu profesor
+  ```
+
+  **Solution:**
+  1. Format: `+56912345678` (exactly 12 characters)
+  2. Must include `+` prefix
+  3. Student and guardian phones must be different
+  4. Verify Chilean country code (+56)
+
+  **Same Phone Error:**
+  ```
+  no puedes poner el mismo número de teléfono para ti y tu apoderado. Favor corrígelo
+  ```
+
+  **Code Reference:** app.js:207-211, app.js:411-415
+</Accordion>
+
+<Accordion title="Last name validation fails">
+  **Problem:** Student last names rejected during registration.
+
+  **User Message:**
+  ```
+  Escribiste [n] palabras en tus apellidos
+  si tus apellidos son compuestos escríbelos como una sola palabra.
+  Ej: San Martin debes escribirlo como Sanmartin
+  Corrígelo y vuelve a enviarme los datos.
+  Si consideras que tu escribiste bien, verifica que no hay dos espacios entre tus dos apellidos
+  ```
+
+  **Solution:**
+  1. Use exactly 2 words (first last name + second last name)
+  2. Combine compound names into single word
+  3. Check for double spaces between names
+
+  **Code Reference:** app.js:203-206, app.js:407-410
+</Accordion>
+
+## Permission Errors
+
+<Accordion title="Non-admin accessing admin commands">
+  **Problem:** Regular users try to execute admin-only commands.
+
+  **Behavior:** No response - command is silently ignored
+
+  **Solution:**
+  Only the user with phone number matching `process.env.numeroAdmin` can execute:
+  - `/addlistanegra`
+  - `/removelistanegra`
+  - `/listalistanegra`
+  - `/addsimsimi`
+  - `/removesimsimi`
+  - `/listsimsimi`
+
+  **Code Reference:** app.js:48, app.js:298-351
+</Accordion>
+
+<Accordion title="Teacher commands from non-teacher">
+  **Problem:** Students try to access teacher-only features.
+
+  **Commands affected:**
+  - `/docente` - Teacher instructions
+  - `/datos [rut]` - Student data lookup
+  - `/wsp [course] [message]` - Course broadcast
+  - `/sapoderado [name]` - Guardian search (suspended)
+
+  **Behavior:** Bot responds with instructions but actual data is not returned
+
+  **Solution:**
+  Verify user identity before executing sensitive queries. Teacher status should be validated server-side.
+
+  **Code Reference:** app.js:177-188, app.js:242-254, app.js:379-390, app.js:445-459
+</Accordion>
+
+## User List Management
+
+<Accordion title="User lists not loading">
+  **Problem:** Changes to userLists.json not reflected in bot.
+
+  **Console Message:**
+  ```
+  Error loading user lists: [error]
+  ```
+
+  **Solution:**
+  1. Verify `userLists.json` exists in root directory
+  2. Check JSON syntax is valid
+  3. Ensure file permissions allow read/write
+  4. Restart bot to reload lists
+
+  **Code Reference:** app.js:8-24
+</Accordion>
+
+<Accordion title="List commands not saving">
+  **Problem:** Admin list commands execute but changes don't persist.
+
+  **Console Message:**
+  ```
+  Error saving user lists: [error]
+  ```
+
+  **Solution:**
+  1. Check write permissions on `userLists.json`
+  2. Verify disk space available
+  3. Ensure `saveLists()` is called after modifications
+  4. Check for file system errors in logs
+
+  **Code Reference:** app.js:26-33, app.js:309, app.js:318, app.js:331, app.js:340
+</Accordion>
+
+## SimSimi AI Errors
+
+<Accordion title="SimSimi API failure">
+  **Problem:** AI responses fail or return errors.
+
+  **User Message:**
+  ```
+  No molestes con eso por favor, solo respondo a tus palabras escritas. Si insistes serás baneado del sistema
+  ```
+
+  **API Error Response:**
+  ```json
+  {
+    "message": "Required parameter is not present"
+  }
+  ```
+
+  **Solution:**
+  1. Check message content is valid text (not empty or media-only)
+  2. Verify SimSimi API endpoint is accessible
+  3. Ensure `lc` parameter is set to 'es' for Spanish
+  4. Add API key if required by service
+
+  **Code Reference:** APIservicios.js:406-432
+</Accordion>
+
+<Accordion title="CleverBot fallback fails">
+  **Problem:** Both SimSimi and CleverBot fail.
+
+  **User Message:**
+  ```
+  Por el momento tengo problemas para responder. Escríbeme mas tarde [nombre]
+  ```
+
+  **Solution:**
+  1. Check internet connectivity
+  2. Verify both AI services are operational
+  3. Review error logs for specific failures
+  4. Consider implementing additional fallback responses
+
+  **Code Reference:** app.js:110, app.js:268-278, app.js:487-496
+</Accordion>
+
+## Session Management
+
+<Accordion title="File system errors during note generation">
+  **Problem:** HTML report files fail to write/delete.
+
+  **Admin Notification:**
+  ```
+  error de direccion obtenida url porque: [error]
+  Peticion de Notas de [nombre]
+  ```
+
+  **Solution:**
+  1. Ensure `./informes/` directory exists
+  2. Check write permissions on informes folder
+  3. Verify sufficient disk space
+  4. Clean up old report files if accumulating
+
+  **Code Reference:** APIservicios.js:68-94
+</Accordion>
+
+<Accordion title="Media file send failures">
+  **Problem:** Reports or documents fail to send.
+
+  **Solution:**
+  1. Verify MessageMedia class is properly imported
+  2. Check file path resolution is correct
+  3. For Telegram: ensure document format is supported
+  4. For WhatsApp: verify MIME types are correct
+  5. Check file size limits (WhatsApp: 64MB, Telegram: 50MB)
+
+  **Code Reference:** APIservicios.js:71-93
+</Accordion>
+
+## Environment Variables
+
+<Accordion title="Missing environment configuration">
+  **Problem:** Bot crashes on startup or features don't work.
+
+  **Common Missing Variables:**
+  - `numeroAdmin` - Admin WhatsApp number
+  - `implementacionApiGoogle` - Google Apps Script deployment ID
+  - `OPENAI_API_KEY` - OpenAI API key (suspended)
+  - Telegram bot token from config.js
+
+  **Solution:**
+  1. Create `.env` file in root directory
+  2. Add required variables:
+     ```bash
+     numeroAdmin=56912345678@c.us
+     implementacionApiGoogle=AKfycby...
+     ```
+  3. Ensure `require('dotenv').config()` is called
+  4. Restart bot after changes
+
+  **Code Reference:** APIservicios.js:1-4, app.js:47-48
+</Accordion>
+
+## Getting Help
+
+If issues persist after trying these solutions:
+
+1. **Check console logs** for detailed error messages
+2. **Contact admin** via email: dcornejo@liceotecnicotalcahuano.cl
+3. **Review source code** at the referenced line numbers
+4. **Verify dependencies** are installed: `npm install`
+5. **Test components individually** (WhatsApp, Telegram, Google API)
+
+## Debugging Tips
+
+1. **Enable verbose logging** - Uncomment console.log statements in source
+2. **Test APIs directly** - Use browser or Postman to verify Google Scripts
+3. **Isolate the platform** - Test WhatsApp and Telegram separately
+4. **Validate data manually** - Test RUT/email validators independently
+5. **Monitor admin messages** - Admin receives detailed error notifications

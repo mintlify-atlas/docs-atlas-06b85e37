@@ -1,0 +1,459 @@
+---
+title: 'Student Operations'
+description: 'API functions for student grade reports, enrollment, and profile updates'
+icon: 'user-graduate'
+---
+
+## envioNotas
+
+Retrieves and sends a student's grade report as an HTML document.
+
+### Function Signature
+
+```javascript
+function envioNotas(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)
+```
+
+### Parameters
+
+<ParamField path="nombreCompletoUsuario" type="string" required>
+  Full name of the user requesting grades (e.g., "Juan Pérez")
+</ParamField>
+
+<ParamField path="mensajeUsuario" type="string" required>
+  The message content containing the RUT number (Chilean national ID)
+</ParamField>
+
+<ParamField path="numeroUsuarioWhatsapp" type="string">
+  WhatsApp number in format `56912345678@c.us`. Required for WhatsApp, `null` for Telegram
+</ParamField>
+
+<ParamField path="ctx" type="Context">
+  Telegraf context object. Required for Telegram, `null` for WhatsApp
+</ParamField>
+
+### RUT Processing
+
+The function normalizes the RUT input:
+
+```javascript
+let RUT_solicitar_notas = mensajeUsuario.trim();
+if (RUT_solicitar_notas.substring(0,3)=='100') {
+  RUT_solicitar_notas = RUT_solicitar_notas.split('100')[1];
+}
+```
+
+- Removes leading `100` prefix (for foreign student RUTs)
+- No formatting required - accepts raw numbers
+
+### Request Flow
+
+1. **Initial Acknowledgment**
+   ```javascript
+   ctx.reply(`${nombreCompletoUsuario}, espera un momento mientras reviso los datos.`);
+   ```
+
+2. **API Call**
+   ```javascript
+   fetch(urlApiNotas + RUT_solicitar_notas)
+   ```
+
+3. **Redirect Handling**
+   - Receives redirect URL from Google Apps Script
+   - Fetches actual HTML content from redirect
+
+4. **File Generation**
+   - Creates HTML file: `informe de notas solicitado por [name] al [date].html`
+   - Saves to `./informes/` directory
+   - Converts to MessageMedia for WhatsApp
+
+5. **Delivery** (after 10 second delay)
+   ```javascript
+   // Telegram
+   await ctx.sendDocument({source: archivomediaTlgrm});
+   
+   // WhatsApp
+   await cliente.sendMessage(numeroUsuarioWhatsapp, archivomediaWsp);
+   ```
+
+6. **Cleanup**
+   ```javascript
+   await fs.unlinkSync(pathFileNombrearchivo);
+   ```
+
+### Response Examples
+
+**Success:**
+- Sends HTML grade report file
+- File contains complete academic record
+
+**Student Not Found:**
+```
+Estudiante no existe, verifique los datos y reintente. Si el problema 
+persiste escriba a dcornejo@liceotecnicotalcahuano.cl indicando su rut, 
+nombre y curso
+```
+
+### Error Handling
+
+**API Error:**
+```javascript
+.catch((errorApiNotas) => {
+  ctx.reply(`Tuve problemas con tu solicitud. por: ${errorApiNotas}. 
+            Intente de nuevo, si el problema persiste favor reenvie este 
+            mensaje a dcornejo@liceotecnicotalcahuano.cl`);
+});
+```
+
+**Redirect Error:**
+- Logs error to console
+- Notifies admin via WhatsApp
+- Includes requester name and RUT
+
+### Usage Example
+
+**Telegram:**
+```javascript
+bot.on(message('text'), async (ctx) => {
+  const nombreCompleto = ctx.from.first_name + ' ' + ctx.from.last_name;
+  const rut = ctx.message.text;
+  
+  if (!isNaN(rut) && rut.length >= 9) {
+    envioNotas(nombreCompleto, rut, null, ctx);
+  }
+});
+```
+
+**WhatsApp:**
+```javascript
+cliente.on("message", async (mensaje) => {
+  const nombre = mensaje._data.notifyName;
+  const numero = mensaje.from;
+  const rut = mensaje.body;
+  
+  if (!isNaN(rut) && rut.length >= 9) {
+    envioNotas(nombre, rut, numero, null);
+  }
+});
+```
+
+<Note>
+  The generated HTML file is automatically deleted after sending to prevent disk space issues.
+</Note>
+
+---
+
+## inscripcionAlSistema
+
+Generates a pre-filled Google Form URL for new student enrollment.
+
+### Function Signature
+
+```javascript
+function inscripcionAlSistema(mensajeUsuario)
+```
+
+### Parameters
+
+<ParamField path="mensajeUsuario" type="string" required>
+  Comma-separated enrollment data following the template format
+</ParamField>
+
+### Data Template
+
+The function expects data in this exact format:
+
+```
+Estudiante,
+Primer_Nombre: Alan,
+2_Apellidos: Brito Delgado,
+RUT: 12345678-5,
+numero_de_lista: 3,
+correo: correo@ejemplo.com,
+curso: 2A,
+Direccion: blanco encalada 1250 Talcahuano,
+Telefono: +56912345678,
+Nombre_y_Apellido_Apoderado: Zoila Vaca,
+Telefono_Apoderado: +56987654321
+```
+
+### Data Extraction
+
+The function parses and processes each field:
+
+```javascript
+let datos_inscripcion = mensajeUsuario.split(',');
+let primer_nombre = ortografiaMayuscula(datos_inscripcion[1].split(':')[1].trim());
+let dos_apellidos = datos_inscripcion[2].split(':')[1].trim();
+let primer_apellido = ortografiaMayuscula(dos_apellidos.split(' ')[0]);
+let segundo_apellido = ortografiaMayuscula(dos_apellidos.split(' ')[1]);
+let rut_nuevo = datos_inscripcion[3].split(':')[1]
+  .replace(/[\.,-]/g, '')
+  .replace(/[K-k]/g,'1')
+  .replace(/\s+/g,'')
+  .replace(/^100/,'');
+let numero_lista = datos_inscripcion[4].split(':')[1].trim();
+let correo_nuevo_alumno = datos_inscripcion[5].split(':')[1].trim();
+let curso = datos_inscripcion[6].split(':')[1].replace(/\s+/g,'').toUpperCase() + 'C25';
+let direccion = datos_inscripcion[7].split(':')[1].replace(/^ /,'').trimStart();
+let fono = datos_inscripcion[8].split(':')[1].replace(/\s+/g,'');
+let apoderado = ortografiaMayuscula(datos_inscripcion[9].split(':')[1].trim());
+let fono_apoderado = datos_inscripcion[10].split(':')[1].replace(/\s+/g,'');
+```
+
+### URL Generation
+
+Creates a pre-filled Google Form URL:
+
+```javascript
+let linkIncripcion = `https://docs.google.com/forms/d/e/1FAIpQLSf3HzUYOd3OZikZMSBE1VOG6rgS0PkUOIIlAuEFyXHeM8V40A/viewform?usp=pp_url&entry.2005620554=${primer_nombre}&entry.691594478=${primer_apellido}+${segundo_apellido}+&entry.450021770=${rut_nuevo}&entry.1128966543=${numero_lista}&entry.1045781291=${correo_nuevo_alumno}&entry.1414220081=${curso}&entry.1065046570=${direccion.replace(/\s+/g,'+')}&entry.1166974658=%2B${fono.split('+')[1]}&entry.839337160=${apoderado.replace(/\s+/g,'+')}&entry.2030694607=%2B${fono_apoderado.split('+')[1]}`;
+```
+
+### Validation (in app.js)
+
+Before calling this function, the system validates:
+
+**Last Names:**
+```javascript
+let apellidosVerificar = mensajeUsuario.split(',')[2].split(':')[1].trim();
+if (apellidosVerificar.split(' ').length > 2) {
+  return ctx.reply('si tus apellidos son compuestos escríbelos como una sola palabra.');
+}
+```
+
+**Phone Numbers:**
+```javascript
+let fono = mensajeUsuario.split(',')[8].split(':')[1].replace(/\s+/g,'');
+let fono_apoderado = mensajeUsuario.split(',')[10].split(':')[1].replace(/\s+/g,'');
+
+if (fono.length != 12 || fono_apoderado.length != 12) {
+  return ctx.reply('alguno de los números de teléfono esta incorrecto');
+}
+
+if (fono === fono_apoderado) {
+  return ctx.reply('no puedes poner el mismo número de teléfono para ti y tu apoderado');
+}
+```
+
+**RUT:**
+```javascript
+const { validate } = require('rut.js');
+const validaRut = (rut) => { return validate(rut); };
+
+if (validaRut(rutAverificar) && mensajeUsuario.split(',').length == 11) {
+  let resultadoInscripcion = inscripcionAlSistema(mensajeUsuario);
+  await ctx.reply('revisa cuidadosamente que los datos estén correctos en el siguiente link');
+  setTimeout(async() => await ctx.reply(resultadoInscripcion), 6000);
+}
+```
+
+### Return Value
+
+<ResponseField name="linkIncripcion" type="string">
+  Pre-filled Google Form URL with all student data encoded in query parameters
+</ResponseField>
+
+### Helper Function
+
+The function uses `ortografiaMayuscula` for name capitalization:
+
+```javascript
+function ortografiaMayuscula(texto) {
+  return texto.replace(/(^\w{1})|(\s+\w{1})/g, 
+    primeraLetra => primeraLetra.toUpperCase()
+  );
+}
+```
+
+Converts: `"alan brito"` → `"Alan Brito"`
+
+---
+
+## cambioEmail
+
+Updates a student's email address in the database.
+
+### Function Signature
+
+```javascript
+function cambioEmail(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)
+```
+
+### Parameters
+
+<ParamField path="nombreCompletoUsuario" type="string" required>
+  Full name of the user requesting the change
+</ParamField>
+
+<ParamField path="mensajeUsuario" type="string" required>
+  Message containing RUT and new email in format: `RUT,email@example.com`
+</ParamField>
+
+<ParamField path="numeroUsuarioWhatsapp" type="string">
+  WhatsApp number. Required for WhatsApp, `null` for Telegram
+</ParamField>
+
+<ParamField path="ctx" type="Context">
+  Telegraf context. Required for Telegram, `null` for WhatsApp
+</ParamField>
+
+### Input Format
+
+**Expected Format:**
+```
+123456781,nuevocorreo@gmail.com
+```
+
+- RUT without dots, commas, or hyphens
+- K replaced with 1
+- No `100` prefix for foreign students
+- Comma separator
+- Valid email address
+
+### Processing Logic
+
+```javascript
+let respuestaACambioStandard = `${nombreCompletoUsuario}, cambio tu email a ${mensajeUsuario.split(',')[1]} ahora mismo, dame unos segundos para verificar tus datos`;
+
+try {
+  ctx.reply(respuestaACambioStandard);
+} catch (errorCambioEmail) {
+  cliente.sendMessage(numeroUsuarioWhatsapp, respuestaACambioStandard);
+}
+
+let rutconEmail = mensajeUsuario.split(',');
+let RUT_paraCambioEmail = rutconEmail[0]
+  .replace(/[\.,-]/g, '')
+  .replace(/[K-k]/g,'1')
+  .replace(/\s+/g,'')
+  .trim();
+let correo_paraCambioEmail = rutconEmail.replace(/\s+/g,'').trim();
+let comandoListoparaAPI = RUT_paraCambioEmail + ',' + correo_paraCambioEmail;
+```
+
+### API Call
+
+```javascript
+fetch(urlApiNuevoEmail + comandoListoparaAPI)
+  .then((respuestaApiEmail) => {
+    return respuestaApiEmail;
+  })
+  .then((direccionObtenidaEmail) => {
+    fetch(direccionObtenidaEmail.url)
+      .then((respuestarDireccionEmail) => {
+        return respuestarDireccionEmail.text();
+      })
+      .then((respuestaTextodeDireccionEmail) => {
+        try {
+          ctx.reply(respuestaTextodeDireccionEmail);
+        } catch (error) {
+          cliente.sendMessage(numeroUsuarioWhatsapp, respuestaTextodeDireccionEmail);
+        }
+      })
+  })
+```
+
+### Email Validation (in app.js)
+
+Before calling the function:
+
+```javascript
+const validarEmail = require('email-validator');
+
+let rutconEmail = mensajeUsuario.split(',');
+var nuevoEmailalumno = rutconEmail[1].replace(/\s+/g,'');
+
+if (validarEmail.validate(nuevoEmailalumno)) {
+  cambioEmail(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx);
+} else {
+  ctx.reply(`${nuevoEmailalumno} no es un email valido. Reintente según instrucciones`);
+}
+```
+
+### Response Examples
+
+**Success:**
+```
+Email actualizado correctamente para el estudiante [nombre]
+```
+
+**Student Not Found:**
+```
+Estudiante no existe, verifique los datos y reintente
+```
+
+### Error Handling
+
+**API Response Error:**
+```javascript
+.catch((errorRespuestaDireccionEmail) => {
+  console.log(errorRespuestaDireccionEmail);
+  cliente.sendMessage(numeroAdmin, 
+    `Hubo un error en la respuesta de la direccion email cuando se quiso 
+     cambiar los datos de ${nombreCompletoUsuario} con rut 
+     ${RUT_paraCambioEmail} por: ${errorRespuestaDireccionEmail}`);
+})
+```
+
+**Request Error:**
+```javascript
+.catch((errorDireccionObtenidaEmail) => {
+  console.log(errorDireccionObtenidaEmail);
+  cliente.sendMessage(numeroAdmin,
+    `Hubo un error en la respuesta de la direccion obtenida email cuando se 
+     quiso cambiar los datos de ${nombreCompletoUsuario} con rut 
+     ${RUT_paraCambioEmail} por: ${errorDireccionObtenidaEmail}`);
+})
+```
+
+### Complete Usage Flow
+
+```javascript
+// User types: "2"
+if (mensajeUsuario.search(/email/) >= 0 || mensajeUsuario.trim() == "2") {
+  ctx.reply(`${nombreUsuario}, debes escribir ahora tu rut sin puntos ni guion 
+            (Si termina en k reemplácelo por 1.) seguido de una coma y el nuevo email.
+            ej: 123456781,nuevocorreo@gmail.com`);
+}
+
+// User types: "123456781,nuevo@gmail.com"
+if (mensajeUsuario.search(/@/) >= 0) {
+  let rutconEmail = mensajeUsuario.split(',');
+  var nuevoEmailalumno = rutconEmail[1].replace(/\s+/g,'');
+  
+  if (validarEmail.validate(nuevoEmailalumno)) {
+    cambioEmail(nombreCompleto, mensajeUsuario, numeroWhatsapp, ctx);
+  } else {
+    ctx.reply(`${nuevoEmailalumno} no es un email valido`);
+  }
+}
+```
+
+<Warning>
+  Always validate email format before calling this function to prevent unnecessary API calls.
+</Warning>
+
+## Common Patterns
+
+All student operations share these patterns:
+
+### Dual Platform Support
+```javascript
+try {
+  ctx.reply(message);  // Telegram
+} catch (error) {
+  cliente.sendMessage(numeroUsuarioWhatsapp, message);  // WhatsApp
+}
+```
+
+### Admin Notification on Errors
+```javascript
+cliente.sendMessage(numeroAdmin, errorDetails);
+```
+
+### Delayed File Operations
+```javascript
+setTimeout(async () => {
+  // Send file or perform operation
+}, 10000);
+```

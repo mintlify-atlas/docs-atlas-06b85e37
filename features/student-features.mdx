@@ -1,0 +1,395 @@
+---
+title: "Student Features"
+description: "Learn how students can use Pregúntale al Profe to access grades, update information, and register in the system"
+---
+
+## Overview
+
+Pregúntale al Profe provides students with quick access to their academic information through simple text commands on both Telegram and WhatsApp. All interactions are designed to be intuitive and require minimal technical knowledge.
+
+## Getting Started
+
+When you first interact with the bot, send "**opciones**" to see the available commands:
+
+<CodeGroup>
+```text Telegram
+opciones
+```
+
+```text WhatsApp
+opciones
+```
+</CodeGroup>
+
+The bot will respond with a menu showing all available options.
+
+## Core Features
+
+### 1. Request Grade Reports
+
+Students can request their complete grade report by sending their RUT (Chilean national ID).
+
+<Steps>
+  <Step title="Trigger the command">
+    Send a message containing the word "**nota**" or simply type "**1**"
+    
+    ```text
+    nota
+    ```
+    
+    The bot will respond with instructions: `app.js:167`
+  </Step>
+  
+  <Step title="Send your RUT">
+    Enter only your RUT number without dots or hyphens. If it ends in K, replace it with 1.
+    
+    **Example:**
+    - Original RUT: `12.345.678-k`
+    - Send: `123456781`
+    
+    ```text
+    123456781
+    ```
+    
+    The bot validates that the message is numeric and at least 9 characters long: `app.js:168-169`
+  </Step>
+  
+  <Step title="Receive your report">
+    Wait a few seconds while the bot retrieves your information. You'll receive an HTML file containing your complete grade report.
+    
+    The file is temporarily generated and sent as a document: `APIservicios.js:69-94`
+  </Step>
+</Steps>
+
+<Warning>
+  **Important RUT Format Rules**
+  - No dots, commas, or hyphens
+  - Replace 'K' or 'k' with '1'
+  - Foreign students: Do NOT include the '100' prefix
+  - Minimum 9 characters
+  
+  Incorrect format will result in the request being ignored or receiving an error.
+</Warning>
+
+### 2. Update Email Address
+
+Change the email address where you receive test results and notifications.
+
+<Steps>
+  <Step title="Request email change">
+    Send a message containing "**email**" or type "**2**"
+    
+    ```text
+    email
+    ```
+    
+    The bot responds with instructions: `app.js:172-174`
+  </Step>
+  
+  <Step title="Send RUT and new email">
+    Format: `RUT,newemail@example.com` (comma-separated, no spaces)
+    
+    ```text
+    123456781,newemail@gmail.com
+    ```
+    
+    The bot validates the email format before processing: `app.js:238`
+  </Step>
+  
+  <Step title="Confirmation">
+    You'll receive a confirmation message once the email has been updated in the database: `APIservicios.js:334-341`
+  </Step>
+</Steps>
+
+<Note>
+  Foreign students should NOT include the '100' prefix in their RUT when changing email.
+</Note>
+
+### 3. System Registration (Template Method)
+
+New students can register using a pre-formatted template that the bot provides.
+
+<Steps>
+  <Step title="Request registration">
+    Send a message with "**inscribirme**" or type "**3**"
+    
+    ```text
+    quiero inscribirme
+    ```
+    
+    The bot will send you instructions and a template: `app.js:188-196`
+  </Step>
+  
+  <Step title="Fill out the template">
+    The bot sends you this template after 18 seconds:
+    
+    ```text
+    Estudiante,
+    Primer_Nombre: Alan,
+    2_Apellidos: Brito Delgado,
+    RUT: 12345678-5,
+    numero_de_lista : 3,
+    correo: correo@ejemplo.com,
+    curso: 2A,
+    Direccion: blanco encalada 1250 Talcahuano,
+    Telefono: +56912345678,
+    Nombre_y_Apellido_Apoderado: Zoila Vaca,
+    Telefono_Apoderado: +56987654321
+    ```
+    
+    Replace ONLY the values after the colons with your information. Do NOT delete commas or labels.
+  </Step>
+  
+  <Step title="Send completed template">
+    Copy the template, replace the example data with your own, and send it back to the bot.
+    
+    The bot performs multiple validations: `app.js:199-219`
+  </Step>
+  
+  <Step title="Verify and submit">
+    The bot generates a Google Form link with your data pre-filled. Click the link, verify your information is correct, and click SUBMIT to complete registration: `APIservicios.js:292-309`
+  </Step>
+</Steps>
+
+<Accordion title="Common Registration Errors">
+  **Apellidos (Last Names) Error**
+  
+  If your last names are compound (e.g., "San Martin"), write them as one word: "Sanmartin"
+  
+  Error message: `app.js:203-205`
+  
+  ---
+  
+  **Phone Number Error**
+  
+  Both phone numbers must be exactly 12 characters long (including +56)
+  - Format: `+56912345678`
+  - Must start with `+56`
+  
+  Error message: `app.js:207-208`
+  
+  ---
+  
+  **Duplicate Phone Numbers**
+  
+  Student and guardian phone numbers cannot be the same.
+  
+  Error message: `app.js:209-210`
+  
+  ---
+  
+  **Invalid RUT**
+  
+  The bot validates Chilean RUTs using the rut.js library: `app.js:213`
+  
+  ---
+  
+  **Template Format Error**
+  
+  The template must have exactly 11 comma-separated fields. If you deleted a comma or label by mistake, request the template again.
+  
+  Error message: `app.js:217-218`
+</Accordion>
+
+### 4. Online Registration (Google Form)
+
+An alternative registration method using a Google Chat Form.
+
+<Steps>
+  <Step title="Request online registration">
+    Type "/online" command
+    
+    ```text
+    /online
+    ```
+    
+    Source: `app.js:221-223`
+  </Step>
+  
+  <Step title="Complete the form">
+    The bot sends you a Google Chat Form link where you can register step-by-step with guidance:
+    
+    ```
+    https://chat-forms.com/forms/1614949217593-mnk/?form
+    ```
+    
+    Defined at: `app.js:68`
+  </Step>
+</Steps>
+
+<Info>
+  This method is recommended if you're having trouble with the template method or need more guidance during registration.
+</Info>
+
+## Conversational AI
+
+The bot includes conversational AI capabilities powered by SimSimi API for casual interactions.
+
+### Greetings
+
+When you send a message containing "**hola**", the bot responds with a random greeting:
+
+```text Example Interaction
+Student: hola
+Bot: estas bien?, un gusto saludarte Juan Pérez
+```
+
+The bot has 5 different greeting responses, including time-aware messages: `app.js:150-164`
+
+### General Conversation
+
+For Telegram users, any message that doesn't match a specific command is sent to SimSimi for a conversational response: `app.js:256-278`
+
+<Warning>
+  **WhatsApp Limitation**
+  
+  On WhatsApp, conversational AI is restricted to specific users in the SimSimi whitelist to prevent abuse. Other users receive a generic message.
+  
+  Generic response: `app.js:112`
+  
+  To be added to the whitelist, contact the administrator.
+</Warning>
+
+### Farewell Messages
+
+Saying goodbye triggers a special response with a link to the teacher's website:
+
+```text
+adios
+```
+
+or
+
+```text
+chao
+```
+
+Response: "Chao. Para mas información visita cuando quieras https://www.profedaniel.cl" `app.js:170-171`
+
+## Error Messages
+
+Understanding error messages helps you resolve issues quickly.
+
+<CardGroup cols={2}>
+  <Card title="Student Not Found" icon="user-xmark">
+    **Message:** "Estudiante no existe, verifique los datos y reintente."
+    
+    **Cause:** RUT not found in database or incorrect format
+    
+    **Solution:** Verify your RUT is correct and properly formatted. Contact dcornejo@liceotecnicotalcahuano.cl if problem persists.
+    
+    Source: `app.js:96-99`, `APIservicios.js:65-107`
+  </Card>
+  
+  <Card title="Invalid Email" icon="envelope-circle-check">
+    **Message:** "{email} no es un email valido. Reintente según instrucciones"
+    
+    **Cause:** Email format validation failed
+    
+    **Solution:** Check your email format and ensure comma separation is correct
+    
+    Source: `app.js:240`
+  </Card>
+  
+  <Card title="Phone Number Error" icon="phone-xmark">
+    **Message:** "al parecer alguno de los números de teléfono esta incorrecto"
+    
+    **Cause:** Phone number not exactly 12 characters or missing +56 prefix
+    
+    **Solution:** Use format +56912345678 (12 characters total)
+    
+    Source: `app.js:207-208`
+  </Card>
+  
+  <Card title="AI Service Unavailable" icon="robot">
+    **Message:** "Por el momento tengo problemas para responder. Escríbeme mas tarde"
+    
+    **Cause:** SimSimi/Cleverbot API temporarily unavailable
+    
+    **Solution:** Wait and try again later, or use specific commands
+    
+    Source: `app.js:276`
+  </Card>
+</CardGroup>
+
+## Tips for Best Experience
+
+<AccordionGroup>
+  <Accordion title="Command Recognition">
+    The bot uses case-insensitive pattern matching, so you can type commands in any case:
+    
+    - "OPCIONES", "opciones", "Opciones" all work
+    - "NOTA", "nota", "Nota" all work
+    
+    The bot converts all messages to lowercase for processing: `app.js:147`
+  </Accordion>
+  
+  <Accordion title="Response Times">
+    Different operations have different response times:
+    
+    - **Grade reports:** ~10 seconds (file generation time)
+    - **Email changes:** ~5 seconds
+    - **Registration template:** Sent in 3 stages (0s, 9s, 18s)
+    - **Data retrieval:** ~5 seconds
+    
+    Be patient and wait for the complete response before sending another command.
+  </Accordion>
+  
+  <Accordion title="Telegram vs WhatsApp Differences">
+    **Telegram advantages:**
+    - Full AI conversation available to all users
+    - Visual menu button for commands
+    - Better file preview for grade reports
+    
+    **WhatsApp:**
+    - AI conversation restricted to whitelisted users
+    - Generic responses for unrecognized commands
+    - Same core features (grades, email, registration)
+    
+    Both platforms have identical command syntax.
+  </Accordion>
+  
+  <Accordion title="When to Contact the Teacher">
+    Contact dcornejo@liceotecnicotalcahuano.cl if:
+    
+    - Your RUT is not found after multiple attempts
+    - You receive persistent error messages
+    - You need to be added to the WhatsApp AI whitelist
+    - You have questions about your grade report
+    - You need help with registration issues
+  </Accordion>
+</AccordionGroup>
+
+## System Limitations
+
+<Warning>
+  **Important Restrictions**
+  
+  - The bot is NOT the teacher's personal number
+  - Do not expect real-time teacher responses
+  - AI responses are automated and may not always be contextually perfect
+  - Grade reports reflect database information only
+  - Abuse of the system may result in blacklisting
+  
+  The bot states: "soy solo un servicio de mensajeria virtual, ESTE NO ES EL NUMERO DEL PROFESOR" `app.js:112`
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Teacher Features" icon="chalkboard-user" href="/features/teacher-features">
+    Learn about commands available to teachers
+  </Card>
+  
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Get started with the bot in minutes
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/advanced/troubleshooting">
+    Solutions to common problems
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore the API documentation
+  </Card>
+</CardGroup>

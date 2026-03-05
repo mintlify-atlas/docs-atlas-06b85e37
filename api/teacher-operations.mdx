@@ -1,0 +1,602 @@
+---
+title: 'Teacher Operations'
+description: 'Admin-only API functions for student data retrieval and course messaging'
+icon: 'chalkboard-user'
+---
+
+<Warning>
+  All teacher operations require admin authentication. These functions are restricted to the phone number configured in `process.env.numeroAdmin`.
+</Warning>
+
+## datosEstudiante
+
+Retrieves comprehensive student information from the database using their RUT.
+
+### Function Signature
+
+```javascript
+function datosEstudiante(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)
+```
+
+### Parameters
+
+<ParamField path="nombreCompletoUsuario" type="string" required>
+  Full name of the teacher making the request
+</ParamField>
+
+<ParamField path="mensajeUsuario" type="string" required>
+  Message containing the `/datos` command followed by the student's RUT
+</ParamField>
+
+<ParamField path="numeroUsuarioWhatsapp" type="string">
+  WhatsApp number of the teacher. Required for WhatsApp, `null` for Telegram
+</ParamField>
+
+<ParamField path="ctx" type="Context">
+  Telegraf context object. Required for Telegram, `null` for WhatsApp
+</ParamField>
+
+### Command Format
+
+**Telegram:**
+```
+/datos 123456781
+```
+
+**WhatsApp:**
+```
+/datos 123456781
+```
+
+### RUT Processing
+
+Extracts and normalizes the RUT from the message:
+
+```javascript
+mensajeUsuario = mensajeUsuario.split(' ')[1];
+let RUT_solicitar_datos = mensajeUsuario
+  .replace(/[\.,-]/g, "")
+  .replace(/[K-k]/g, '1')
+  .trim();
+```
+
+Processing rules:
+- Removes dots (`.`), commas (`,`), and hyphens (`-`)
+- Replaces `K` or `k` with `1`
+- Removes whitespace
+
+### Request Flow
+
+1. **Initial Acknowledgment**
+   ```javascript
+   let respuestaDatosEstudianteStandard = `Profesor(a) ${nombreCompletoUsuario}, deme unos segundos para revisar los datos que me dio`;
+   
+   try {
+     ctx.reply(respuestaDatosEstudianteStandard);
+   } catch (errorSolicitudDatosEstudiante) {
+     cliente.sendMessage(numeroUsuarioWhatsapp, respuestaDatosEstudianteStandard);
+   }
+   ```
+
+2. **API Request**
+   ```javascript
+   const urlApiDatosEstudiante = 
+     "https://script.google.com/macros/s/" + codigoImplementacion + 
+     "/exec?sdata=datosEstudiante,";
+   
+   fetch(urlApiDatosEstudiante + RUT_solicitar_datos)
+   ```
+
+3. **Redirect Handling**
+   ```javascript
+   .then((direccionRespuestaApiDatosEstudiante) => {
+     return direccionRespuestaApiDatosEstudiante;
+   })
+   .then((direccionRespuestaApiDatosEstudiante) => {
+     fetch(direccionRespuestaApiDatosEstudiante.url)
+   ```
+
+4. **Response Processing** (5 second delay)
+   ```javascript
+   setTimeout(async () => {
+     try {
+       await ctx.reply(respuestaDireccionApiDatosEstudiante);
+     } catch (error) {
+       await cliente.sendMessage(numeroUsuarioWhatsapp, respuestaDireccionApiDatosEstudiante);
+     }
+   }, 5000)
+   ```
+
+### Response Format
+
+The API returns student data as a formatted text string containing:
+- Full name
+- RUT
+- Course and section
+- Email address
+- Phone number
+- Address
+- Guardian information
+- Guardian phone number
+
+**Student Not Found:**
+```
+Estudiante no existe, verifique los datos y reintente. Si el problema persiste 
+escriiba a dcornejo@liceotecnicotalcahuano.cl indicando su rut, nombre y curso
+```
+
+### Error Handling
+
+**Response Fetch Error:**
+```javascript
+.catch((errorRespuestaDireccionApiDatosEstudiante) => {
+  cliente.sendMessage(numeroAdmin, 
+    `Error respuesta direccion api datos estudiante en la solicitud de datos de 
+     ${nombreCompletoUsuario} cuando pidio los datos del estudiante 
+     ${RUT_solicitar_datos} por: ${errorRespuestaDireccionApiDatosEstudiante}`);
+  console.log(errorRespuestaDireccionApiDatosEstudiante);
+});
+```
+
+**URL Request Error:**
+```javascript
+.catch((errorUrlApiDatosEstudiante) => {
+  cliente.sendMessage(numeroAdmin, 
+    `Error en la url Api Datos Estudiante cuando pidio ${nombreCompletoUsuario} 
+     por el rut ${RUT_solicitar_datos} por: ${errorUrlApiDatosEstudiante}`);
+  console.log(`Error en urlApiDatosEstudiante por: ${errorUrlApiDatosEstudiante}`);
+})
+```
+
+### Validation (in app.js)
+
+**Command Check:**
+```javascript
+if (mensajeUsuario.search(/\/datos/) == 0) {
+  if (mensajeUsuario.trim() === '/datos') {
+    ctx.reply(`Profesor(a) ${nombreCompleto}, no me mandaste los datos despues 
+              del comando /datos. Reintenta como se te indicó cuando escribiste /docente`);
+  } else {
+    datosEstudiante(nombreCompleto, mensajeUsuario, numeroWhatsapp, ctx);
+  }
+}
+```
+
+### Usage Example
+
+**Telegram Flow:**
+```javascript
+// Teacher types: "/docente"
+bot.on(message('text'), async (ctx) => {
+  if (ctx.message.text.toLowerCase().search(/\/docente/) == 0) {
+    ctx.reply(`Profesor(a), para solicitar los datos de algun estudiante debes usar 
+              el comando /datos, un espacio y el rut del estudiante sin puntos ni guión 
+              En caso de terminar en k, reemplácelo por un 1 en esta forma exactamente 
+              por ejemplo: /datos 123456781`);
+  }
+});
+
+// Teacher types: "/datos 123456781"
+bot.on(message('text'), async (ctx) => {
+  if (ctx.message.text.toLowerCase().search(/\/datos/) == 0) {
+    const nombreCompleto = ctx.from.first_name + ' ' + ctx.from.last_name;
+    datosEstudiante(nombreCompleto, ctx.message.text.toLowerCase(), null, ctx);
+  }
+});
+```
+
+---
+
+## datosEstudianteCurso
+
+Retrieves all students in a course and sends a broadcast message to them via WhatsApp.
+
+### Function Signature
+
+```javascript
+function datosEstudianteCurso(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)
+```
+
+### Parameters
+
+<ParamField path="nombreCompletoUsuario" type="string" required>
+  Full name of the teacher sending the broadcast
+</ParamField>
+
+<ParamField path="mensajeUsuario" type="string" required>
+  Message containing course code and broadcast content in format: `[CURSO] [mensaje]`
+</ParamField>
+
+<ParamField path="numeroUsuarioWhatsapp" type="string">
+  WhatsApp number of the teacher. Required for WhatsApp, `null` for Telegram
+</ParamField>
+
+<ParamField path="ctx" type="Context">
+  Telegraf context. Required for Telegram, `null` for WhatsApp
+</ParamField>
+
+### Command Format
+
+**Telegram/WhatsApp:**
+```
+/wsp 2AC25 Mañana no hay clases
+```
+
+Format breakdown:
+- `/wsp` - Command
+- `2AC25` - Course code (grade + section + school code)
+- `Mañana no hay clases` - Message to broadcast
+
+### Course Code Validation
+
+The function validates course format strictly:
+
+```javascript
+const cursosPosibles = ['1','2','3','4'];           // Valid grades
+const paralelosPosibles = ['A','B','C','D','E','F']; // Valid sections
+const codigoLiceoPosibles = ['C25','B26'];          // Valid school codes
+
+let cursoAdifundirMensaje = mensajeUsuario.split(' ')[0].trim().toUpperCase();
+let numeroCurso   = cursoAdifundirMensaje.split('')[0] || 6;
+let paraleloCurso = cursoAdifundirMensaje.split('')[1] || 'Z';
+let codigoLiceo   = cursoAdifundirMensaje.split('')[2].toUpperCase() + 
+                    cursoAdifundirMensaje.split('')[3].toUpperCase() + 
+                    cursoAdifundirMensaje.split('')[4].toUpperCase() || 'XXX';
+```
+
+### Message Extraction
+
+Extracts the broadcast message after the course code:
+
+```javascript
+let mensajeAdifundir = codigoLiceoPosibles
+  .map(codigoLiceoParaSplit => mensajeUsuario.split(codigoLiceoParaSplit.toLowerCase())[1])
+  .find(mensajeAdifundir => mensajeAdifundir !== undefined);
+```
+
+### Validation Logic
+
+```javascript
+if (
+  cursoAdifundirMensaje.length !== 5 || 
+  cursosPosibles.indexOf(numeroCurso) < 0 || 
+  paralelosPosibles.indexOf(paraleloCurso) < 0 || 
+  codigoLiceoPosibles.indexOf(codigoLiceo) < 0 || 
+  mensajeAdifundir == undefined
+) {
+  let mensajeErrorDeCurso = "curso mal escrito, verifique que esta correcto, curso+letra+C25, ejemplo 2FC25";
+  try {
+    ctx.reply(mensajeErrorDeCurso);
+  } catch (error) {
+    cliente.sendMessage(numeroUsuarioWhatsapp, mensajeErrorDeCurso);
+    cliente.sendMessage(numeroAdmin, mensajeErrorDeCurso + ' el mensaje a difundir dio ' + mensajeAdifundir);
+  }
+  return;
+}
+```
+
+### API Request
+
+```javascript
+const urlApiDatosEstudianteCurso = 
+  "https://script.google.com/macros/s/" + codigoImplementacion + 
+  "/exec?sdata=datosEstudiantesCurso,";
+
+fetch(urlApiDatosEstudianteCurso + cursoAdifundirMensaje)
+```
+
+### Response Processing
+
+The API returns comma-separated student data. The function processes it in groups of 7 fields per student:
+
+```javascript
+var datosPorEstudiantesDelCurso = [];
+let datosCurso = respuestaDireccionApiDatosEstudianteCurso
+  .split(',')
+  .map(cadaDato => cadaDato.trim());
+
+// Process in groups of 7
+for (let d = 0; d < datosCurso.length; d += 7) {
+  let renglonDeDatosActual = datosCurso.slice(d, d + 7);
+  
+  // Construct message
+  let mensajeDifusionFinalWSP = renglonDeDatosActual[1] + 
+    ', te recuerdo algo importante: ' + mensajeAdifundir + 
+    '\n\nPor favor NO RESPONDAS ESTE MENSAJE';
+  
+  // Format phone number
+  let numeroTelefonoAlumno = renglonDeDatosActual[4].replace('+','') + '@c.us';
+  
+  // Send message
+  cliente.isRegisteredUser(numeroTelefonoAlumno)
+    .then((esUsuarioWSPregistrado) => {
+      if (esUsuarioWSPregistrado) {
+        setTimeout(() => {
+          cliente.sendMessage(numeroTelefonoAlumno, mensajeDifusionFinalWSP);
+        }, 16000); // 16 second delay between messages
+      } else {
+        // Notify about invalid number
+      }
+    })
+}
+```
+
+### Student Data Structure
+
+Each student record contains 7 fields:
+1. Field 0: (Internal ID)
+2. Field 1: First name
+3. Field 2: Last name
+4. Field 3: RUT
+5. Field 4: Phone number (e.g., `+56912345678`)
+6. Field 5: Email
+7. Field 6: Additional data
+
+### Message Delivery
+
+**Phone Validation:**
+```javascript
+cliente.isRegisteredUser(numeroTelefonoAlumno)
+  .then((esUsuarioWSPregistrado) => {
+    if (esUsuarioWSPregistrado) {
+      setTimeout(() => {
+        cliente.sendMessage(numeroTelefonoAlumno, mensajeDifusionFinalWSP);
+      }, 16000);
+    } else {
+      try {
+        ctx.reply('el numero ' + numeroTelefonoAlumno + ' del alumno ' + 
+                  renglonDeDatosActual[1] + ' ' + renglonDeDatosActual[2] + 
+                  ' es invalido para wsp o el alumno esta retirado');
+      } catch (error) {
+        cliente.sendMessage(numeroAdmin, 'el numero ' + numeroTelefonoAlumno + 
+                           ' del alumno ' + renglonDeDatosActual[1] + ' ' + 
+                           renglonDeDatosActual[2] + 
+                           ' es invalido para wsp o el alumno esta retirado');
+      }
+    }
+  })
+```
+
+<Warning>
+  Messages are sent with a 16-second delay between each student to prevent WhatsApp rate limiting.
+</Warning>
+
+### Admin Notification
+
+After processing, sends summary to admin:
+
+```javascript
+cliente.sendMessage(numeroAdmin, datosPorEstudiantesDelCurso);
+```
+
+### Error Handling
+
+**Course Not Found:**
+```
+Curso no existe, verifique los datos y reintente. Si el problema persiste 
+escriba a dcornejo@liceotecnicotalcahuano.cl indicando el problema
+```
+
+**API Errors:**
+```javascript
+.catch((errorUrlApiDatosEstudiante) => {
+  cliente.sendMessage(numeroAdmin, `Error datos curso por: ${errorUrlApiDatosEstudiante}`);
+  console.log(`Error en urlApiDatosEstudiante por: ${errorUrlApiDatosEstudiante}`);
+})
+```
+
+**Registration Check Error:**
+```javascript
+.catch((errorIsRegistered) => {
+  try {
+    ctx.reply("no se pudo enviar al admin por el error " + errorIsRegistered + 
+             ' revisa el alumno ' + renglonDeDatosActual[1] + ' ' + renglonDeDatosActual[2]);
+  } catch (error) {
+    cliente.sendMessage(numeroAdmin, "no se pudo enviar al admin por el error " + 
+                       errorIsRegistered + ' revisa el alumno ' + 
+                       renglonDeDatosActual[1] + ' ' + renglonDeDatosActual[2]);
+  }
+});
+```
+
+### Usage Example (from app.js)
+
+**Command Validation:**
+```javascript
+if (mensajeUsuario.search(/\/wsp/) == 0) {
+  if (mensajeUsuario.trim() === '/wsp') {
+    ctx.reply(`Profesor(a) ${nombreCompleto}, no me mandaste los datos despues 
+              del comando que eligió /wsp. Reintenta como se te indicó cuando 
+              escribiste /docente`);
+  } else {
+    datosEstudianteCurso(
+      nombreCompleto, 
+      mensajeUsuario.split('\/wsp ')[1].trim(), 
+      null, 
+      ctx
+    );
+    
+    setTimeout(async () => {
+      try {
+        ctx.reply('He enviado el mensaje con lo que doy por finalizada su solicitud');
+      } catch (errorDatosCurso) {
+        ctx.reply(errorDatosCurso);
+      }
+    }, 15000);
+  }
+}
+```
+
+---
+
+## simSimi
+
+Provides conversational AI responses using the SimSimi API for casual interactions.
+
+### Function Signature
+
+```javascript
+async function simSimi(mensajeEntrante)
+```
+
+### Parameters
+
+<ParamField path="mensajeEntrante" type="string" required>
+  The incoming message text to generate a response for
+</ParamField>
+
+### API Integration
+
+```javascript
+const url = 'https://api.simsimi.vn/v1/simtalk';
+const key = ''; // API key (optional)
+
+const datos = new URLSearchParams();
+datos.append('text', mensajeEntrante);
+datos.append('lc', 'es'); // Language: Spanish
+datos.append('key', key);
+
+try {
+  const respuesta = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: datos.toString(),
+  });
+  
+  const resultado = await respuesta.json();
+  
+  if (resultado.message == 'Required parameter is not present') {
+    return 'No molestes con eso por favor, solo respondo a tus palabras escritas. 
+            Si insistes serás baneado del sistema';
+  }
+  
+  return resultado.message;
+} catch (error) {
+  console.error('Error:', error);
+  return null;
+}
+```
+
+### Response Handling
+
+<ResponseField name="resultado.message" type="string">
+  AI-generated response in Spanish
+</ResponseField>
+
+### Error Cases
+
+**Invalid Input:**
+```
+No molestes con eso por favor, solo respondo a tus palabras escritas. 
+Si insistes serás baneado del sistema
+```
+
+**API Error:**
+- Returns `null`
+- Error logged to console
+
+### Usage in Bot (from app.js)
+
+**Telegram:**
+```javascript
+else {
+  try {
+    simSimi(mensajeUsuarioTelegram)
+      .then(async (resultadoRespuestaSimSimi) => {
+        await ctx.reply(resultadoRespuestaSimSimi);
+      })
+  } catch (error) {
+    // Fallback to cleverbot
+    clever(mensajeUsuarioTelegram)
+      .then(async (respuestacleverBot) => {
+        await ctx.reply(respuestacleverBot);
+      })
+      .catch((errorCleverbot) => {
+        ctx.reply(inicioMensajeErrorCleverBot + nombreUsuario);
+      })
+  }
+}
+```
+
+**WhatsApp (with access control):**
+```javascript
+if (listaSimsimi.some(user => user.numero === numeroUsuarioWhatsapp)) {
+  // User is in SimSimi whitelist
+  simSimi(cuerpoMensajeWhatsapp)
+    .then(async (resultadoRespuestaSimSimi) => {
+      await cliente.sendMessage(numeroUsuarioWhatsapp, resultadoRespuestaSimSimi);
+    })
+} else if (numeroUsuarioWhatsapp == process.env.numeroAdmin) {
+  // Admin has full access
+  cliente.sendMessage(numeroUsuarioWhatsapp, "usted es admin");
+} else {
+  // Others get generic response
+  cliente.sendMessage(numeroUsuarioWhatsapp, respuestaGenericaBot);
+}
+```
+
+### Access Control
+
+SimSimi is controlled through admin commands (app.js:298-350):
+
+**Add to SimSimi List:**
+```
+/addsimsimi 569XXXXXXXX Nombre Usuario
+```
+
+**Remove from SimSimi List:**
+```
+/removesimsimi 569XXXXXXXX
+```
+
+**List SimSimi Users:**
+```
+/listsimsimi
+```
+
+<Info>
+  SimSimi is only available to whitelisted users and the admin. Other users receive a generic bot response.
+</Info>
+
+### Language Support
+
+The `lc` parameter can be changed to support different languages:
+- `es` - Spanish (current)
+- `en` - English
+- `fr` - French
+- `ja` - Japanese
+- `de` - German
+- And more...
+
+## Admin Authentication
+
+All teacher operations verify the requesting user is the admin:
+
+```javascript
+const numeroAdmin = process.env.numeroAdmin;
+
+if (numeroUsuarioWhatsapp === numeroAdmin && cuerpoMensaje.startsWith('/')) {
+  // Admin commands
+}
+```
+
+### Available Admin Commands
+
+**User Management:**
+- `/addlistanegra [numero] [identificador]` - Add to blacklist
+- `/removelistanegra [numero]` - Remove from blacklist
+- `/listalistanegra` - View blacklist
+- `/addsimsimi [numero] [identificador]` - Add SimSimi access
+- `/removesimsimi [numero]` - Remove SimSimi access
+- `/listsimsimi` - View SimSimi whitelist
+
+**Data Operations:**
+- `/docente` - View teacher instructions
+- `/datos [RUT]` - Get student data
+- `/wsp [CURSO] [mensaje]` - Broadcast to course
+
+<Warning>
+  These operations can only be executed from the phone number specified in the `numeroAdmin` environment variable.
+</Warning>

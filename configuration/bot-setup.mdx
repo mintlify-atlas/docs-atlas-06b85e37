@@ -1,0 +1,461 @@
+---
+title: Bot Setup
+description: Step-by-step guide to setting up your Telegram and WhatsApp bots for the Pregúntale al Profe system.
+---
+
+## Overview
+
+The Pregúntale al Profe bot operates on both Telegram and WhatsApp simultaneously. This guide will walk you through setting up both platforms, including authentication, session management, and testing.
+
+## Telegram Bot Setup
+
+### Creating Your Bot with BotFather
+
+<Steps>
+  <Step title="Open BotFather">
+    Search for [@BotFather](https://t.me/botfather) in Telegram and start a chat.
+    
+    BotFather is the official Telegram bot for creating and managing bots.
+  </Step>
+  
+  <Step title="Create a New Bot">
+    Send the `/newbot` command to BotFather.
+    
+    ```
+    /newbot
+    ```
+  </Step>
+  
+  <Step title="Name Your Bot">
+    BotFather will ask you to choose a name for your bot. This is the display name users will see.
+    
+    **Example:** `Pregúntale al Profe`
+  </Step>
+  
+  <Step title="Choose a Username">
+    Select a unique username for your bot. It must end with `bot`.
+    
+    **Example:** `preguntale_al_profe_bot`
+    
+    <Note>
+      The username must be unique across all Telegram bots and cannot be changed later.
+    </Note>
+  </Step>
+  
+  <Step title="Save Your Token">
+    BotFather will provide you with an authentication token in the format:
+    
+    ```
+    1064387076:AAHJUmOM7g7iwDKynkAeWKKYbLrTPKKBxxx
+    ```
+    
+    Copy this token and add it to your `.env` file as `BOT_TOKEN`.
+    
+    <Warning>
+      Keep this token secret! Anyone with access to it can control your bot.
+    </Warning>
+  </Step>
+</Steps>
+
+### Configuring Bot Commands
+
+The bot uses the Telegraf framework and supports the following commands:
+
+<CodeGroup>
+```javascript app.js - Bot Initialization
+const { Telegraf } = require('telegraf');
+const { tokenTlgrm } = require('./config');
+
+const BOT_TOKEN = tokenTlgrm();
+const bot = new Telegraf(BOT_TOKEN);
+
+console.log('cliente telegram inicializado. ya se puede operar');
+```
+
+```javascript app.js - Basic Commands
+bot.start((ctx) => 
+  ctx.reply('Bienvenido, escribe *opciones* para saber lo que puedo hacer.\nEl uso indebido del sistema implica bloqueo, baneo y otras posibles consecuencias')
+);
+
+bot.help((ctx) => 
+  ctx.reply(ctx.from.first_name + '\n' + menuOpciones + finalMenuOpcionesTelegram)
+);
+```
+</CodeGroup>
+
+### Testing Telegram Connectivity
+
+Once your bot is configured:
+
+1. Search for your bot username in Telegram
+2. Send `/start` to begin a conversation
+3. Send `/help` or `opciones` to see available commands
+4. Try requesting grades by sending a RUT number
+
+If you see responses, your Telegram bot is working correctly!
+
+## WhatsApp Bot Setup
+
+### Authentication Process
+
+The WhatsApp bot uses `whatsapp-web.js` with `LocalAuth` for session persistence.
+
+<Steps>
+  <Step title="Install Dependencies">
+    Ensure all required packages are installed:
+    
+    ```bash
+    npm install
+    ```
+    
+    This installs `whatsapp-web.js`, `qrcode-terminal`, and other dependencies.
+  </Step>
+  
+  <Step title="Start the Application">
+    Run the bot application:
+    
+    ```bash
+    npm start
+    ```
+    
+    Or directly:
+    
+    ```bash
+    node app.js
+    ```
+  </Step>
+  
+  <Step title="Scan QR Code">
+    A QR code will appear in your terminal on first run:
+    
+    ```
+    no habia sesion iniciada
+    █████████████████████████████
+    █████████████████████████████
+    ████ ▄▄▄▄▄ █▀█ █▄▀▄█ ▄▄▄▄▄ ████
+    ████ █   █ █▀▀▀█ ▄█ █   █ ████
+    ...
+    se inicia sesion, por favor escanee el qr de arriba
+    ```
+  </Step>
+  
+  <Step title="Link WhatsApp">
+    On your phone:
+    1. Open WhatsApp
+    2. Tap **Menu** (⋮) or **Settings**
+    3. Tap **Linked Devices**
+    4. Tap **Link a Device**
+    5. Scan the QR code displayed in your terminal
+  </Step>
+  
+  <Step title="Confirm Connection">
+    Once scanned, you'll see:
+    
+    ```
+    cliente whatsapp inicializado, ya se puede operar
+    ```
+    
+    Your WhatsApp session is now active!
+  </Step>
+</Steps>
+
+### Session Management
+
+The bot uses `LocalAuth` to persist your WhatsApp session:
+
+<CodeGroup>
+```javascript app.js - WhatsApp Client
+const { Client, LocalAuth } = require("whatsapp-web.js");
+const codigoqrPorTerminal = require("qrcode-terminal");
+
+cliente = new Client({
+  authStrategy: new LocalAuth(),
+  puppeteer: { headless: true },
+});
+```
+
+```javascript app.js - QR Code Generation
+cliente.on("qr", (qr) => {
+  console.log("no habia sesion iniciada");
+  codigoqrPorTerminal.generate(qr, { small: true });
+  console.log(`se inicia sesion, por favor escanee el qr de arriba`);
+});
+```
+
+```javascript app.js - Ready Event
+cliente.on("ready", () => {
+  console.log("cliente whatsapp inicializado, ya se puede operar");
+});
+```
+
+```javascript app.js - Authentication Failure
+cliente.on("auth_failure", (errorAutenticacion) => {
+  console.log("fallo el inicio de sesion en whatsapp porque: ", errorAutenticacion);
+});
+```
+</CodeGroup>
+
+<Info>
+  **LocalAuth Benefits:**
+  - Automatically saves session data locally
+  - No need to scan QR code on every restart
+  - Session persists across application restarts
+  - Stored in `.wwebjs_auth/` directory
+</Info>
+
+### WhatsApp Admin Number
+
+The `numeroAdmin` environment variable identifies the administrator's WhatsApp number:
+
+```javascript
+const numeroAdmin = process.env.numeroAdmin;
+
+// Admin-only commands
+if (numeroUsuarioWhatsapp === process.env.numeroAdmin && cuerpoMensajeWhatsapp.startsWith('/')) {
+  switch (command) {
+    case '/addlistanegra':     // Add user to blacklist
+    case '/removelistanegra':  // Remove from blacklist
+    case '/listalistanegra':   // View blacklist
+    case '/addsimsimi':        // Add to chatbot whitelist
+    case '/removesimsimi':     // Remove from chatbot whitelist
+    case '/listsimsimi':       // View chatbot whitelist
+  }
+}
+```
+
+**Admin Commands Format:**
+- `/addlistanegra 598xxxxxxxx Nombre Apellido` - Block a user
+- `/removelistanegra 598xxxxxxxx` - Unblock a user
+- `/addsimsimi 569xxxxxxxx Nombre` - Enable chatbot for user
+
+## Google Apps Script Backend
+
+The bot relies on a Google Apps Script deployment for data operations.
+
+### Setup Requirements
+
+<Steps>
+  <Step title="Create Google Sheet">
+    Create a Google Sheet with student data including:
+    - Student names and RUT numbers
+    - Grades and academic records
+    - Email addresses
+    - Course information
+    - Guardian contact details
+  </Step>
+  
+  <Step title="Create Apps Script">
+    In your Google Sheet:
+    1. Click **Extensions** → **Apps Script**
+    2. Write your script to handle data queries
+    3. Implement endpoints for grades, student data, and email updates
+  </Step>
+  
+  <Step title="Deploy as Web App">
+    1. Click **Deploy** → **New deployment**
+    2. Select **Web app** as deployment type
+    3. Set **Execute as:** to your account
+    4. Set **Who has access:** to "Anyone" (or your organization)
+    5. Click **Deploy**
+    6. Copy the deployment URL
+  </Step>
+  
+  <Step title="Extract Deployment ID">
+    From the URL:
+    ```
+    https://script.google.com/macros/s/AKfycbw.../exec
+    ```
+    
+    Copy the ID between `/s/` and `/exec` and add it to your `.env` file as `implementacionApiGoogle`.
+  </Step>
+</Steps>
+
+### API Endpoints
+
+The bot constructs the following endpoints:
+
+<CodeGroup>
+```javascript APIservicios.js - Endpoints
+const codigoImplementacion = process.env.implementacionApiGoogle;
+
+// Get student grades
+const urlApiNotas = 
+  "https://script.google.com/macros/s/" + codigoImplementacion + "/exec?sdata=";
+
+// Update email
+const urlApiNuevoEmail = 
+  "https://script.google.com/macros/s/" + codigoImplementacion + "/exec?sdata=";
+
+// Get student data by RUT
+const urlApiDatosEstudiante = 
+  "https://script.google.com/macros/s/" + codigoImplementacion + "/exec?sdata=datosEstudiante,";
+
+// Get course data
+const urlApiDatosEstudianteCurso = 
+  "https://script.google.com/macros/s/" + codigoImplementacion + "/exec?sdata=datosEstudiantesCurso,";
+```
+</CodeGroup>
+
+## Testing Bot Connectivity
+
+### Testing Telegram
+
+<Tabs>
+  <Tab title="Basic Commands">
+    Send these messages to your bot:
+    
+    1. `/start` - Should receive welcome message
+    2. `opciones` - Should see menu
+    3. `hola` - Should get a greeting response
+  </Tab>
+  
+  <Tab title="Student Features">
+    Test student functionality:
+    
+    1. Send `notas` or `1` - Should ask for RUT
+    2. Send a valid RUT (e.g., `123456789`) - Should receive grades report
+    3. Send `email` or `2` - Should ask for RUT and new email
+    4. Send `inscribirme` or `3` - Should receive registration template
+  </Tab>
+  
+  <Tab title="Teacher Features">
+    Test teacher commands:
+    
+    1. `/docente` - Should see teacher instructions
+    2. `/datos 123456789` - Should retrieve student data
+    3. `/wsp 2AC25 mensaje` - Should broadcast to course (WhatsApp only)
+  </Tab>
+</Tabs>
+
+### Testing WhatsApp
+
+Send a WhatsApp message to the linked number:
+
+1. **Basic Test:** Send `hola` - Should receive a greeting
+2. **Menu Test:** Send `opciones` - Should see available commands
+3. **Grades Test:** Send `1` followed by a RUT number
+4. **Admin Test:** From admin number, send `/listalistanegra`
+
+## Common Setup Issues
+
+<AccordionGroup>
+  <Accordion title="QR code not appearing">
+    **Symptoms:** No QR code displays when starting the app.
+    
+    **Possible Causes:**
+    - Previous session exists (check `.wwebjs_auth/` directory)
+    - Terminal doesn't support QR rendering
+    - `qrcode-terminal` not installed
+    
+    **Solutions:**
+    1. Delete `.wwebjs_auth/` directory and restart
+    2. Try a different terminal emulator
+    3. Run `npm install qrcode-terminal`
+  </Accordion>
+  
+  <Accordion title="WhatsApp authentication fails">
+    **Symptoms:** Error message after scanning QR code.
+    
+    **Possible Causes:**
+    - WhatsApp Web is not compatible with current version
+    - Firewall blocking connection
+    - Multiple devices already linked
+    
+    **Solutions:**
+    1. Update `whatsapp-web.js` to latest version: `npm update whatsapp-web.js`
+    2. Check firewall settings
+    3. Remove unused linked devices in WhatsApp
+  </Accordion>
+  
+  <Accordion title="Telegram bot not responding">
+    **Symptoms:** Bot doesn't reply to messages.
+    
+    **Possible Causes:**
+    - Invalid `BOT_TOKEN`
+    - Bot not started with `bot.launch()`
+    - Network connectivity issues
+    
+    **Solutions:**
+    1. Verify token with BotFather using `/token`
+    2. Check console for initialization message
+    3. Ensure `bot.launch()` is called in code
+  </Accordion>
+  
+  <Accordion title="Google Apps Script errors">
+    **Symptoms:** Students receive "Estudiante no existe" for valid data.
+    
+    **Possible Causes:**
+    - Incorrect `implementacionApiGoogle` value
+    - Apps Script not deployed or permissions issue
+    - Sheet structure doesn't match expected format
+    
+    **Solutions:**
+    1. Verify deployment ID in `.env` file
+    2. Redeploy Apps Script as web app
+    3. Test API endpoint directly in browser
+    4. Check Apps Script execution logs
+  </Accordion>
+  
+  <Accordion title="Session keeps disconnecting">
+    **Symptoms:** WhatsApp requires QR scan frequently.
+    
+    **Possible Causes:**
+    - `LocalAuth` directory being deleted
+    - Insufficient permissions on auth directory
+    - Phone disconnected from internet
+    
+    **Solutions:**
+    1. Ensure `.wwebjs_auth/` persists between restarts
+    2. Check directory permissions: `chmod -R 755 .wwebjs_auth/`
+    3. Keep your phone online and connected
+  </Accordion>
+</AccordionGroup>
+
+## Launch Process
+
+When everything is configured, the bots launch automatically:
+
+<CodeGroup>
+```javascript app.js - Launch Sequence
+// Initialize WhatsApp client
+cliente.initialize();
+
+// Launch Telegram bot
+bot.launch();
+
+// Enable graceful stop
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
+```
+</CodeGroup>
+
+You should see:
+
+```
+cliente telegram inicializado. ya se puede operar
+cliente whatsapp inicializado, ya se puede operar
+```
+
+<Check>
+  Your bot is now fully operational on both platforms!
+</Check>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="User Lists" icon="users" href="/advanced/user-lists">
+    Manage blacklists and chatbot access
+  </Card>
+  
+  <Card title="Student Features" icon="graduation-cap" href="/features/student-features">
+    Learn about available student commands
+  </Card>
+  
+  <Card title="Teacher Features" icon="chalkboard-user" href="/features/teacher-features">
+    Explore teacher tools and commands
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/advanced/troubleshooting">
+    Common issues and solutions
+  </Card>
+</CardGroup>

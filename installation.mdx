@@ -1,0 +1,269 @@
+---
+title: Installation
+description: Step-by-step guide to install and configure Pregúntale al Profe bot on your server.
+---
+
+## Prerequisites
+
+Before installing the bot, ensure you have the following:
+
+<Steps>
+  <Step title="Node.js v14 or higher">
+    The bot requires Node.js version 14 or higher. Check your version:
+    
+    ```bash
+    node --version
+    ```
+    
+    Download from [nodejs.org](https://nodejs.org/) if needed.
+  </Step>
+  
+  <Step title="WhatsApp Account">
+    You need an active WhatsApp account and a smartphone to scan the QR code for authentication.
+    
+    <Warning>
+      The WhatsApp account will be linked to the bot. Don't use your personal account - create a dedicated account for the bot.
+    </Warning>
+  </Step>
+  
+  <Step title="Telegram Bot Token">
+    Create a Telegram bot and obtain your bot token:
+    
+    1. Open Telegram and search for [@BotFather](https://t.me/botfather)
+    2. Send `/newbot` and follow the prompts
+    3. Copy the bot token provided (format: `1064387076:AAHJUmOM7g7iwDKynkAeWKKYbLrTPKKBxxx`)
+  </Step>
+  
+  <Step title="Google Apps Script Deployment">
+    Set up a Google Apps Script project to handle database operations:
+    
+    1. Create a Google Sheets spreadsheet with your student data
+    2. Create a Google Apps Script project linked to the spreadsheet
+    3. Deploy the script as a web app
+    4. Copy the deployment ID (the long code in the deployment URL)
+    
+    <Info>
+      The Google Apps Script acts as your backend API, managing all database operations on the Google Sheets data source.
+    </Info>
+  </Step>
+</Steps>
+
+## Installation Steps
+
+### 1. Clone the Repository
+
+Clone the Pregúntale al Profe repository to your server:
+
+<CodeGroup>
+```bash HTTPS
+git clone https://github.com/tu-usuario/preguntalealprofe.git
+cd preguntalealprofe
+```
+
+```bash SSH
+git clone git@github.com:tu-usuario/preguntalealprofe.git
+cd preguntalealprofe
+```
+</CodeGroup>
+
+### 2. Install Dependencies
+
+Install all required npm packages from `package.json`:
+
+```bash
+npm install
+```
+
+This will install the following key dependencies:
+
+- `telegraf@^4.13.1` - Telegram bot framework
+- `whatsapp-web.js@^1.23.0` - WhatsApp Web client
+- `axios@^1.5.0` - HTTP client
+- `dotenv@^16.3.1` - Environment variable loader
+- `rut.js@^2.1.0` - Chilean RUT validator
+- `email-validator@^2.0.4` - Email validation
+- `qrcode-terminal@^0.12.0` - QR code display
+- `cleverbot-free@^1.1.13` - AI chatbot
+- And more...
+
+### 3. Create Environment Configuration
+
+Create a `.env` file in the project root with your credentials:
+
+```bash .env
+# Telegram Bot Token (from BotFather)
+BOT_TOKEN=1064387076:AAHJUmOM7g7iwDKynkAeWKKYbLrTPKKBxxx
+
+# Admin WhatsApp number in international format (no spaces)
+numeroAdmin=569xxxxxxxx
+
+# Google Apps Script deployment ID
+implementacionApiGoogle=AKfycbzXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+<Note>
+  **Environment Variables Explained:**
+  
+  - `BOT_TOKEN`: Your Telegram bot token from BotFather
+  - `numeroAdmin`: Admin's WhatsApp number for system notifications (format: `569xxxxxxxx`)
+  - `implementacionApiGoogle`: The deployment code from your Google Apps Script URL
+</Note>
+
+### How to Get Your Configuration Values
+
+<Steps>
+  <Step title="BOT_TOKEN">
+    From Telegram BotFather:
+    
+    ```text
+    BotFather: Done! Congratulations on your new bot.
+    Token: 1064387076:AAHJUmOM7g7iwDKynkAeWKKYbLrTPKKBxxx
+    ```
+    
+    Copy the token after "Token:"
+  </Step>
+  
+  <Step title="numeroAdmin">
+    Format your admin WhatsApp number:
+    
+    - Country code: 56 (Chile)
+    - Phone number: 912345678
+    - Result: `569912345678`
+    
+    <Warning>
+      No spaces, no dashes, no plus sign - just digits starting with country code.
+    </Warning>
+  </Step>
+  
+  <Step title="implementacionApiGoogle">
+    From your Google Apps Script web app URL:
+    
+    ```text
+    https://script.google.com/macros/s/AKfycbzXXXXXXXXXXXXXXXXXXXXXXXX/exec
+    ```
+    
+    Copy only the code between `/s/` and `/exec`
+  </Step>
+</Steps>
+
+### 4. Create Reports Directory
+
+The bot requires a directory to store temporary grade report files:
+
+```bash
+mkdir informes
+```
+
+<Info>
+  This directory stores HTML report files temporarily before sending them to users. Files are automatically deleted after transmission.
+</Info>
+
+### 5. Verify Project Structure
+
+Your project structure should look like this:
+
+```text
+preguntalealprofe/
+├── API_servicios/
+│   └── APIservicios.js      # Google Apps Script API integration
+├── informes/                # Temporary reports directory (created in step 4)
+├── .env                     # Environment variables (created in step 3)
+├── .env.example             # Example environment file
+├── app.js                   # Main application file
+├── config.js                # Configuration loader
+├── package.json             # Dependencies and scripts
+├── package-lock.json        # Dependency lock file
+└── README.md                # Project documentation
+```
+
+## Configuration Files
+
+### config.js
+
+The `config.js` file loads environment variables and exports them:
+
+```javascript config.js
+require('dotenv').config()
+
+function tokenTlgrm() {
+    const tokenProfeDaniel = process.env.BOT_TOKEN
+    return tokenProfeDaniel.toString();
+}
+
+module.exports = {
+    tokenTlgrm
+}
+```
+
+### package.json Scripts
+
+Available npm scripts:
+
+```json package.json
+{
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
+```
+
+## Google Apps Script Configuration
+
+Your Google Apps Script needs to handle these API endpoints:
+
+<CodeGroup>
+```javascript Grade Reports
+// Endpoint: ?sdata=RUT_NUMBER
+// Returns: HTML grade report
+```
+
+```javascript Email Update
+// Endpoint: ?sdata=RUT,EMAIL
+// Updates student email in database
+```
+
+```javascript Student Data
+// Endpoint: ?sdata=datosEstudiante,RUT
+// Returns: Student information
+```
+
+```javascript Course Data
+// Endpoint: ?sdata=datosEstudiantesCurso,COURSE_CODE
+// Returns: All students in a course
+```
+</CodeGroup>
+
+<Tip>
+  The Google Apps Script deployment must be set to "Anyone" access so the bot can make requests without authentication.
+</Tip>
+
+## Troubleshooting
+
+### Common Issues
+
+**"BOT_TOKEN is undefined"**
+
+- Check that `.env` file exists in the project root
+- Verify there are no spaces around the `=` sign in `.env`
+- Ensure `dotenv` package is installed
+
+**"numeroAdmin is not a valid WhatsApp number"**
+
+- Use international format without `+` symbol
+- Example: `569XXXXXXXX` (Chile) not `+56 9 XXXX XXXX`
+
+**"Cannot connect to Google Apps Script"**
+
+- Verify the deployment ID in `implementacionApiGoogle`
+- Check that the script is deployed as a web app
+- Ensure the script has "Anyone" access permissions
+
+**"Directory 'informes' not found"**
+
+- Create the directory: `mkdir informes`
+- Check file permissions: `chmod 755 informes`
+
+## Next Steps
+
+With installation complete, proceed to the [Quickstart](/quickstart) guide to launch your bot and handle your first interactions.

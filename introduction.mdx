@@ -1,0 +1,128 @@
+---
+title: Introduction
+description: Learn about Pregúntale al Profe, a multifunctional bot for Telegram and WhatsApp that automates communication between students, guardians, and teachers.
+---
+
+## What is Pregúntale al Profe?
+
+Pregúntale al Profe is a multifunctional bot designed for **Telegram** and **WhatsApp** that automates and facilitates communication between students, guardians (apoderados), and teachers. It provides quick access to academic and administrative information through simple text commands.
+
+<Info>
+  The bot serves as a messaging service interface, not a direct replacement for teacher communication. It's designed to streamline common inquiries and administrative tasks.
+</Info>
+
+## Key Features
+
+### For Students
+
+The bot provides students with several self-service capabilities:
+
+- **Grade Reports (Notas)**: Request academic grade reports by entering your RUT (Chilean national ID). The bot generates and sends an HTML report file.
+- **Email Updates**: Change the email address associated with your student record to receive test results and communications.
+- **System Registration**: New students can register in the database by following guided prompts with a data template.
+- **Online Registration**: Access an alternative Google Forms registration process for easier enrollment.
+- **General Conversation**: Interact with an AI chatbot (SimSimi) for general questions. This feature is restricted to specific authorized users to prevent system abuse.
+
+### For Teachers
+
+Teachers have access to powerful administrative tools:
+
+- **Student Data Queries**: Retrieve detailed student information (name, course, contact details) using their RUT.
+- **Course Messaging**: Broadcast messages to all students in a specific course via WhatsApp.
+- **Guardian Data Queries**: *(Currently suspended)* Search guardian contact information by name.
+
+## Technology Stack
+
+Pregúntale al Profe is built with modern Node.js technologies:
+
+```javascript
+// Core Technologies
+- Node.js (v14+)
+- Telegraf (Telegram Bot Framework)
+- whatsapp-web.js (WhatsApp Web automation)
+- Google Apps Script (Backend database operations)
+```
+
+### Dependencies
+
+The bot relies on several key npm packages:
+
+- **axios** & **isomorphic-fetch**: HTTP clients for external API requests
+- **dotenv**: Environment variable management
+- **rut.js**: Chilean RUT validation
+- **email-validator**: Email address validation
+- **cleverbot-free** & **SimSimi API**: Conversational AI capabilities
+- **qrcode-terminal**: QR code generation for WhatsApp authentication
+
+## Architecture Overview
+
+The bot operates on a multi-platform architecture:
+
+<Steps>
+  <Step title="Messaging Platforms">
+    The bot runs simultaneously on both Telegram and WhatsApp, listening for incoming messages on both platforms.
+  </Step>
+  
+  <Step title="Message Processing">
+    Incoming messages are analyzed and routed to appropriate handlers based on keywords and commands.
+  </Step>
+  
+  <Step title="Google Apps Script Backend">
+    Database operations are handled by a Google Apps Script deployment that manages a Google Sheets spreadsheet acting as the class register ("libro de clases").
+  </Step>
+  
+  <Step title="Response Delivery">
+    Results are sent back to users through their original messaging platform with formatted responses or file attachments.
+  </Step>
+</Steps>
+
+## How It Works
+
+### Message Flow
+
+When a user sends a message to the bot:
+
+1. The bot receives the message via Telegram or WhatsApp
+2. Message content is analyzed for keywords ("notas", "email", "opciones", "/docente", etc.)
+3. For data requests, the bot queries the Google Apps Script API
+4. Results are formatted and sent back to the user
+5. For file operations (like grade reports), temporary HTML files are generated and transmitted
+
+### Data Source
+
+All student, guardian, and academic data is stored in a **Google Sheets spreadsheet** that serves as the primary database. The Google Apps Script acts as the API layer, processing requests from the bot and returning data from the spreadsheet.
+
+<Note>
+  The system uses Google Apps Script as its backend, which means you need to deploy your own Google Apps Script project and configure it to work with your Google Sheets database.
+</Note>
+
+## Use Cases
+
+### Student Scenarios
+
+- **Check Grades**: A student can quickly request their grade report without waiting for teacher availability
+- **Update Contact Info**: Students can update their email addresses for receiving test notifications
+- **New Enrollment**: First-time students can self-register using a guided template
+
+### Teacher Scenarios
+
+- **Quick Student Lookup**: Teachers can instantly retrieve student information during class or meetings
+- **Course Announcements**: Broadcast important messages to an entire course with a single command
+- **Parent Contact**: *(When enabled)* Quickly find guardian contact information
+
+## Security Features
+
+The bot includes several security measures:
+
+- **Blacklist System**: Administrators can block abusive users with `/addlistanegra`
+- **Whitelist for AI Chat**: Only authorized users can access conversational AI features
+- **RUT Validation**: Chilean national ID numbers are validated before processing
+- **Admin Notifications**: System errors and suspicious activity are reported to administrators
+
+<Warning>
+  The bot requires proper configuration of environment variables including admin phone numbers and API deployment codes. Improper configuration can lead to security vulnerabilities.
+</Warning>
+
+## Next Steps
+
+Ready to set up your own instance? Continue to the [Installation](/installation) guide to get started.

@@ -1,80 +1,345 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get your Pregúntale al Profe bot up and running in minutes with this quick guide.
 ---
 
-## Get started in three steps
+## Quick Setup
 
-Get your documentation site running locally and make your first customization.
+Get your bot running in just a few steps:
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+<Steps>
+  <Step title="Start the Bot">
+    Launch the application using npm:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    ```bash
+    npm start
+    ```
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    You should see console output indicating both bots are initializing:
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```text
+    cliente telegram inicializado. ya se puede operar
+    ```
+  </Step>
+  
+  <Step title="Authenticate WhatsApp">
+    On first launch, a QR code will appear in your terminal:
+    
+    ```text
+    no habia sesion iniciada
+    █████████████████████████████████
+    █████████████████████████████████
+    ██ ▄▄▄▄▄ █▀ █▀▀██ █ ▄▄▄▄▄ ██
+    ██ █   █ █▀ ▄ ▄▀█ █ █   █ ██
+    ██ █▄▄▄█ ██▄█ ▀▄  █ █▄▄▄█ ██
+    [... QR code ...]
+    █████████████████████████████████
+    █████████████████████████████████
+    se inicia sesion, por favor escanee el qr de arriba
+    ```
+    
+    <Steps>
+      <Step title="Open WhatsApp">
+        Open WhatsApp on your smartphone
+      </Step>
+      
+      <Step title="Go to Linked Devices">
+        Tap **Menu** → **Linked Devices** (or Settings → Linked Devices)
+      </Step>
+      
+      <Step title="Scan QR Code">
+        Tap **Link a Device** and scan the QR code from your terminal
+      </Step>
+    </Steps>
+    
+    Once scanned, you'll see:
+    
+    ```text
+    cliente whatsapp inicializado, ya se puede operar
+    ```
+    
+    <Note>
+      A `session` folder will be created to store your WhatsApp authentication. Future launches won't require QR scanning.
+    </Note>
+  </Step>
+  
+  <Step title="Verify Telegram Connection">
+    Open Telegram and search for your bot by username (the one you created with BotFather).
+    
+    Send `/start` to your bot. You should receive:
+    
+    ```text
+    Bienvenido, escribe *opciones* para saber lo que puedo hacer.
+    El uso indebido del sistema implica bloqueo, baneo y otras posibles consecuencias
+    ```
+  </Step>
+  
+  <Step title="Test Basic Commands">
+    Try the main menu command in either platform:
+    
+    **Telegram**: Type `opciones`  
+    **WhatsApp**: Send `opciones` to the connected number
+    
+    You should receive the menu:
+    
+    ```text
+    Elige o escribe según quieras:
+    1.- Para pedir notas escribe 1
+    2.- Para cambiar email de resultados de las pruebas escribe 2.
+    3.- Para inscribirse quiero inscribirme o escribe 3 (SOLO si no te has inscrito antes)
+    Escribe opciones para volver a ver este mensaje.
+    ```
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## First Interactions
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+### Student Commands
 
-### Step 3: Go live
+Try these common student interactions:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<CodeGroup>
+```text Request Grades
+# Student sends their RUT (no dots, no dashes)
+123456789
 
-## Next steps
+# Bot responds
+Alan Brito, espera un momento mientras reviso los datos.
 
-Now that you have your docs running, explore these key features:
+# Bot sends HTML file with grades after ~10 seconds
+📄 informe de notas solicitado por Alan Brito al 5_3_2026.html
+```
 
-<CardGroup cols={2}>
+```text Update Email
+# Student sends
+email
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+# Bot responds with instructions
+Alan, debes escribir ahora tu rut sin puntos ni guion (Si termina en k reemplácelo por 1.) 
+seguido de una coma y el nuevo email. Si es extranjero NO escriba el 100
+ej: 123456781,nuevocorreo@gmail.com
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+# Student sends
+123456789,student@example.com
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+# Bot processes the update
+Alan Brito, cambio tu email a student@example.com ahora mismo, dame unos segundos para verificar tus datos
+```
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+```text New Registration
+# Student sends
+inscribirme
 
-</CardGroup>
+# Bot sends template
+Alan, debes REEMPLAZAR y ENVIAR los siguientes datos tal como se te indica.
+NO BORRES MAS QUE LO NECESARIO
+...
+Estudiante,
+Primer_Nombre: Alan,
+2_Apellidos: Brito Delgado,
+RUT: 12345678-5,
+...
+```
+</CodeGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+### Teacher Commands
+
+Teachers have access to special commands with the `/docente` prefix:
+
+<CodeGroup>
+```text Student Lookup
+# Teacher sends
+/docente
+
+# Bot explains usage
+Profesor(a) María, para solicitar los datos de algun estudiante debes usar el comando
+/datos, un espacio y el rut del estudiante sin puntos ni guión...
+
+# Teacher requests data
+/datos 123456789
+
+# Bot returns student info
+Nombre: Alan Brito Delgado
+Curso: 2AC25
+Email: student@example.com
+Teléfono: +56912345678
+...
+```
+
+```text Course Broadcast
+# Teacher sends course announcement
+/wsp 2AC25 Recordatorio: Prueba de matemáticas mañana a las 10:00
+
+# Bot confirms
+Profesor(a) María, deme unos segundos para revisar los datos del mensaje a difundir
+
+# Bot sends message to all students in course 2AC25
+# After completion (~25 seconds)
+He enviado el mensaje con lo que doy por finalizada su solicitud
+```
+</CodeGroup>
+
+## Testing the Bot
+
+### Verify Core Features
+
+Test each major feature to ensure proper setup:
+
+<Steps>
+  <Step title="Menu System">
+    **Command**: `opciones`  
+    **Expected**: Menu with 3 options displayed
+  </Step>
+  
+  <Step title="Grade Reports">
+    **Command**: Enter a valid RUT (e.g., `123456789`)  
+    **Expected**: HTML file sent after ~10 seconds  
+    **Check**: `informes/` directory should be empty (files auto-deleted)
+  </Step>
+  
+  <Step title="Email Update">
+    **Command**: `email` then `RUT,newemail@example.com`  
+    **Expected**: Confirmation message from Google Apps Script
+  </Step>
+  
+  <Step title="Teacher Access">
+    **Command**: `/docente`  
+    **Expected**: Detailed instructions for teacher commands
+  </Step>
+</Steps>
+
+## Admin Commands (WhatsApp Only)
+
+As the admin (configured in `numeroAdmin`), you can manage user access:
+
+```bash Admin Commands
+# Add user to blacklist (block completely)
+/addlistanegra 569XXXXXXXX John Doe
+
+# Remove from blacklist
+/removelistanegra 569XXXXXXXX
+
+# View blacklist
+/listalistanegra
+
+# Add user to SimSimi whitelist (allow AI chat)
+/addsimsimi 569XXXXXXXX Student Name
+
+# Remove from SimSimi list
+/removesimsimi 569XXXXXXXX
+
+# View SimSimi whitelist
+/listsimsimi
+```
+
+<Warning>
+  Admin commands only work when sent from the WhatsApp number specified in `numeroAdmin` environment variable.
+</Warning>
+
+## Common Workflows
+
+### Student Grade Request Flow
+
+```mermaid
+graph LR
+    A[Student sends RUT] --> B[Bot validates RUT]
+    B --> C[Query Google Apps Script]
+    C --> D[Generate HTML report]
+    D --> E[Save to informes/]
+    E --> F[Send file to student]
+    F --> G[Delete local file]
+```
+
+### Teacher Course Broadcast Flow
+
+```mermaid
+graph LR
+    A[Teacher: /wsp 2AC25 message] --> B[Parse course code]
+    B --> C[Query all students in 2AC25]
+    C --> D[Validate WhatsApp numbers]
+    D --> E[Send message to each student]
+    E --> F[Confirm to teacher]
+```
+
+## Troubleshooting
+
+### Bot Not Responding
+
+<Steps>
+  <Step title="Check console output">
+    Look for error messages in the terminal where you ran `npm start`
+  </Step>
+  
+  <Step title="Verify connections">
+    Ensure you see both initialization messages:
+    ```text
+    cliente telegram inicializado. ya se puede operar
+    cliente whatsapp inicializado, ya se puede operar
+    ```
+  </Step>
+  
+  <Step title="Test basic commands">
+    Send `hola` - you should get a random greeting response
+  </Step>
+</Steps>
+
+### WhatsApp QR Code Issues
+
+- **QR code not appearing**: Check that `qrcode-terminal` package is installed
+- **QR code expired**: Restart the bot with `npm start`
+- **Already logged in elsewhere**: Log out of WhatsApp Web on other devices
+
+### Google Apps Script Errors
+
+```bash
+Tuve problemas con tu solicitud. por: [error]. Intente de nuevo...
+```
+
+This indicates the Google Apps Script API is not responding:
+
+- Verify `implementacionApiGoogle` in `.env`
+- Check Google Apps Script deployment status
+- Ensure script permissions are set to "Anyone"
+
+## Running in Production
+
+### Using PM2 (Recommended)
+
+The `pm2` package is included in dependencies for production deployment:
+
+```bash
+# Install PM2 globally
+npm install -g pm2
+
+# Start the bot with PM2
+pm2 start app.js --name preguntalealprofe
+
+# View logs
+pm2 logs preguntalealprofe
+
+# Restart bot
+pm2 restart preguntalealprofe
+
+# Stop bot
+pm2 stop preguntalealprofe
+```
+
+### Using Nodemon (Development)
+
+```bash
+# Start with auto-restart on file changes
+npx nodemon app.js
+```
+
+## Next Steps
+
+Now that your bot is running:
+
+- **Configure Features**: Learn about [student features](/features/student) in detail
+- **Teacher Tools**: Explore [teacher commands](/features/teacher) and workflows
+- **Administration**: Set up [admin controls](/admin/user-management) for user management
+- **Google Apps Script**: Understand the [backend integration](/integrations/google-apps-script)
+
+<Tip>
+  Keep your terminal window open to monitor bot activity and catch any errors in real-time during initial testing.
+</Tip>
