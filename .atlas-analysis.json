@@ -1,0 +1,77 @@
+{
+  "projectType": "general",
+  "projectName": "Pregúntale al Profe",
+  "projectDescription": "Telegram and WhatsApp bot that automates student inquiries and provides academic information",
+  "theme": "almond",
+  "primaryColor": "#aebd57",
+  "lightColor": "#26272c",
+  "darkColor": "#dbdbdd",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Features",
+        "pages": [
+          "features/student-features",
+          "features/teacher-features"
+        ]
+      },
+      {
+        "group": "Configuration",
+        "pages": [
+          "configuration/environment-variables",
+          "configuration/bot-setup"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api/overview",
+          "api/student-operations",
+          "api/teacher-operations"
+        ]
+      },
+      {
+        "group": "Advanced",
+        "pages": [
+          "advanced/user-lists",
+          "advanced/troubleshooting"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Telegram and WhatsApp bot integration",
+    "Student grade report generation",
+    "Email management for students",
+    "Student registration system",
+    "Teacher tools for student data access",
+    "Course-wide message broadcasting",
+    "Conversational AI with SimSimi integration"
+  ],
+  "publicApiSurface": [
+    "envioNotas(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)",
+    "datosEstudiante(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)",
+    "datosEstudianteCurso(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)",
+    "inscripcionAlSistema(mensajeUsuario)",
+    "cambioEmail(nombreCompletoUsuario, mensajeUsuario, numeroUsuarioWhatsapp, ctx)",
+    "simSimi(mensajeEntrante)",
+    "/datos [rut] - Teacher command to get student data",
+    "/wsp [curso][mensaje] - Teacher command to broadcast to course",
+    "/docente - Teacher access instructions",
+    "/online - Online registration link",
+    "/addlistanegra - Admin command to add to blacklist",
+    "/removelistanegra - Admin command to remove from blacklist",
+    "/listalistanegra - Admin command to list blacklisted users",
+    "/addsimsimi - Admin command to add to SimSimi list",
+    "/removesimsimi - Admin command to remove from SimSimi list",
+    "/listsimsimi - Admin command to list SimSimi users"
+  ]
+}
